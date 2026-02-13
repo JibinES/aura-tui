@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 
-// Wizard with wand down
-const wizardNormal = `
+// Wizard ASCII art (static)
+const wizard = `
                    ____
                  .'* *.'
               __/_*_*(_
@@ -27,42 +27,6 @@ _.-'       |      BBb       '-.  '-.
 (________mrf\\____.dBBBb.________)____)
 `;
 
-// Wizard waving wand (arm raised)
-const wizardWaving = `
-                   ____
-                 .'* *.'     ✨
-              __/_*_*(_        *
-             / _______ \\      ★
-            _\\_)/___\\(_/_
-           / _((\\ o o/))_ \\
-           \\ \\())(_)(()/ /
-            ' \\(((()))/ '    /
-           / ' \\)).))/ '    /
-          / _ \\ - | - /    🌟
-         (   ( .;''';.'.)
-         _\\"__ /    )\\ __"/_
-           \\/  \\   ' /  \\/
-            .'  '...' ' )
-             / /  |  \\ \\
-            / .   .   . \\
-           /   .     .   \\
-          /   /   |   \\   \\
-        .'   /    b    '.  '.
-    _.-'    /     Bb     '-. '-._
-_.-'       |      BBb       '-.  '-.
-(________mrf\\____.dBBBb.________)____)
-`;
-
-// Star patterns for different phases
-const starPatterns = [
-  '           ✨                    ',
-  '       ✨      ★               ',
-  '   ★       ✨      ★           ',
-  '       ★      ✨      ★   ✨   ',
-  '   ✨      ★      ✨      ★     ',
-  '       ★  ✨  ★  ✨  ★         ',
-];
-
 const loadingTexts = [
   'Summoning music spirits...',
   'Casting playlist spells...',
@@ -70,6 +34,12 @@ const loadingTexts = [
   'Preparing magical melodies...',
   'Almost ready...',
 ];
+
+interface Star {
+  x: number;
+  y: number;
+  speed: number;
+}
 
 interface StartupAnimationProps {
   onComplete: () => void;
@@ -80,22 +50,34 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
   onComplete,
   duration = 3000
 }) => {
-  const [isWaving, setIsWaving] = useState(false);
-  const [starPattern, setStarPattern] = useState(0);
   const [textIndex, setTextIndex] = useState(0);
   const [dots, setDots] = useState('');
+  const [stars, setStars] = useState<Star[]>([]);
+
+  const width = 80;
+  const height = 30;
 
   useEffect(() => {
-    // Wand waving animation
-    const waveInterval = setInterval(() => {
-      setIsWaving(true);
-      setTimeout(() => setIsWaving(false), 400);
-    }, 800);
+    // Initialize stars
+    const initialStars: Star[] = [];
+    for (let i = 0; i < 50; i++) {
+      initialStars.push({
+        x: Math.floor(Math.random() * width),
+        y: Math.floor(Math.random() * height),
+        speed: Math.random() * 0.5 + 0.3
+      });
+    }
+    setStars(initialStars);
 
-    // Star pattern animation
+    // Star rain animation
     const starInterval = setInterval(() => {
-      setStarPattern(prev => (prev + 1) % starPatterns.length);
-    }, 300);
+      setStars(prevStars =>
+        prevStars.map(star => ({
+          ...star,
+          y: star.y + star.speed > height ? 0 : star.y + star.speed
+        }))
+      );
+    }, 100);
 
     // Loading text animation
     const textInterval = setInterval(() => {
@@ -109,7 +91,6 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
 
     // Complete animation
     const timeout = setTimeout(() => {
-      clearInterval(waveInterval);
       clearInterval(starInterval);
       clearInterval(textInterval);
       clearInterval(dotsInterval);
@@ -117,13 +98,31 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
     }, duration);
 
     return () => {
-      clearInterval(waveInterval);
       clearInterval(starInterval);
       clearInterval(textInterval);
       clearInterval(dotsInterval);
       clearTimeout(timeout);
     };
   }, [onComplete, duration]);
+
+  // Render stars background
+  const renderStars = () => {
+    const lines: string[] = [];
+    for (let row = 0; row < height; row++) {
+      let line = '';
+      for (let col = 0; col < width; col++) {
+        // Check if there's a star at this position
+        const hasStar = stars.some(
+          star => Math.floor(star.x) === col && Math.floor(star.y) === row
+        );
+        line += hasStar ? '*' : ' ';
+      }
+      lines.push(line);
+    }
+    return lines;
+  };
+
+  const starBackground = renderStars();
 
   return (
     <Box
@@ -133,14 +132,19 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
       height="100%"
       padding={1}
     >
-      <Box flexDirection="column" alignItems="center">
-        {/* Stars above wizard */}
-        <Box marginBottom={1}>
-          <Text color="#fbbf24">{starPatterns[starPattern]}</Text>
-        </Box>
+      {/* Star rain background */}
+      <Box position="absolute" width={width} height={height}>
+        {starBackground.map((line, i) => (
+          <Text key={i} color="#6b21a8">
+            {line}
+          </Text>
+        ))}
+      </Box>
 
+      {/* Main content */}
+      <Box flexDirection="column" alignItems="center">
         {/* Wizard ASCII art */}
-        <Text color="#c084fc">{isWaving ? wizardWaving : wizardNormal}</Text>
+        <Text color="#c084fc">{wizard}</Text>
 
         {/* App title */}
         <Box marginTop={1}>
@@ -170,11 +174,6 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
           <Text color="#8b5cf6">
             {loadingTexts[textIndex]}{dots}
           </Text>
-        </Box>
-
-        {/* Magic sparkles */}
-        <Box marginTop={1}>
-          <Text color="#fbbf24">✨ ★ ✨</Text>
         </Box>
       </Box>
     </Box>
