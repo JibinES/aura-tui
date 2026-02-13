@@ -54,12 +54,11 @@ A terminal-based YouTube Music client built with Bun and Ink.
 #### Navigation
 - `1` - Home feed
 - `2` - Search
-- `3` - Library (limited)
-- `4` - Queue
-- `5` - **Playlists** (local playlists!)
+- `3` - Queue
+- `4` - **Playlists** (local playlists!)
 - `?` - Help
 - `/` - Quick search
-- `Q` or `Esc` - Quit (from home)
+- `Ctrl+Q` - Quit application
 
 #### Search View
 - `Enter` - Submit search / Play selected song
@@ -90,7 +89,7 @@ AuraTUI features a **fully local** playlist system:
 - No cloud sync needed - complete privacy!
 
 **Workflow:**
-1. Press `5` to go to Playlists
+1. Press `4` to go to Playlists
 2. Press `N` to create a new playlist
 3. Go to Search (`2`), find songs
 4. Press `P` on any song to add to a playlist

@@ -91,8 +91,8 @@ const App = () => {
     // Navigation
     if (input === '1') setView('home');
     if (input === '2') setView('search');
-    if (input === '4') setView('queue');
-    if (input === '5') setView('playlists');
+    if (input === '3') setView('queue');
+    if (input === '4') setView('playlists');
     if (input === '?') setView('help');
     if (input === '/') setView('search');
 
@@ -141,8 +141,8 @@ const App = () => {
         <Box marginLeft={2}>
           <Text color={view === 'home' ? theme.active : theme.muted}>[1] Home </Text>
           <Text color={view === 'search' ? theme.active : theme.muted}>[2] Search </Text>
-          <Text color={view === 'queue' ? theme.active : theme.muted}>[4] Queue </Text>
-          <Text color={view === 'playlists' ? theme.active : theme.muted}>[5] Playlists </Text>
+          <Text color={view === 'queue' ? theme.active : theme.muted}>[3] Queue </Text>
+          <Text color={view === 'playlists' ? theme.active : theme.muted}>[4] Playlists </Text>
           <Text color={view === 'help' ? theme.active : theme.muted}>[?] Help</Text>
           <Text color={theme.dim}> | Ctrl+Q: Quit</Text>
         </Box>
