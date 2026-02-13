@@ -9,6 +9,7 @@ import Search from './Search';
 import Library from './Library';
 import Queue from './Queue';
 import Help from './Help';
+import Playlists from './Playlists';
 import StartupAnimation from './StartupAnimation';
 import Setup from './Setup';
 
@@ -92,6 +93,7 @@ const App = () => {
     if (input === '2') setView('search');
     if (input === '3') setView('library');
     if (input === '4') setView('queue');
+    if (input === '5') setView('playlists');
     if (input === '?') setView('help');
     if (input === '/') setView('search');
 
@@ -127,6 +129,7 @@ const App = () => {
       case 'search': return <Search />;
       case 'library': return <Library />;
       case 'queue': return <Queue />;
+      case 'playlists': return <Playlists />;
       case 'help': return <Help />;
       default: return <Home />;
     }
@@ -142,6 +145,7 @@ const App = () => {
           <Text color={view === 'search' ? theme.active : theme.muted}>[2] Search </Text>
           <Text color={view === 'library' ? theme.active : theme.muted}>[3] Library </Text>
           <Text color={view === 'queue' ? theme.active : theme.muted}>[4] Queue </Text>
+          <Text color={view === 'playlists' ? theme.active : theme.muted}>[5] Playlists </Text>
           <Text color={view === 'help' ? theme.active : theme.muted}>[?] Help</Text>
         </Box>
       </Box>

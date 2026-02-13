@@ -23,7 +23,7 @@ export interface AppState {
   duration: number;
 
   // UI State
-  view: 'home' | 'library' | 'search' | 'player' | 'queue' | 'help';
+  view: 'home' | 'library' | 'search' | 'player' | 'queue' | 'help' | 'playlists';
   searchQuery: string;
   searchResults: Song[];
   isInputFocused: boolean;
