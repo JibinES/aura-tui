@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { useStore } from '../store/state';
+import AlbumArt from './AlbumArt';
 
 // Violet theme colors
 const theme = {
@@ -85,6 +86,10 @@ const Player = () => {
 
   return (
     <Box borderStyle="round" borderColor={theme.primary} padding={1} flexDirection="row">
+      {/* Album Art Section */}
+      <Box marginRight={2}>
+        <AlbumArt url={currentSong.thumbnail} width={28} height={14} />
+      </Box>
 
       {/* Controls Section */}
       <Box flexDirection="column" flexGrow={1}>
