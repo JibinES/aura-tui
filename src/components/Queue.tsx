@@ -2,6 +2,19 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { useStore } from '../store/state';
 
+// Violet theme colors
+const theme = {
+  primary: '#a855f7',
+  secondary: '#c084fc',
+  accent: '#8b5cf6',
+  highlight: '#7c3aed',
+  muted: '#6b21a8',
+  text: '#e9d5ff',
+  border: '#9333ea',
+  active: '#d8b4fe',
+  dim: '#581c87',
+};
+
 const Queue = () => {
   const { queue, currentSong, playSong, history, setView } = useStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -9,15 +22,13 @@ const Queue = () => {
 
   useInput((input, key) => {
     if (key.escape || input === 'q') {
-      setView('home'); // Go back to home or previous view
+      setView('home');
     }
 
     if (input === 'h') setActiveTab('history');
-    if (input === 'q' && activeTab === 'history') setActiveTab('queue'); // Toggle back to queue if 'q' is pressed? No, 'q' is usually quit/back.
-    // Let's use tab to toggle
     if (key.tab) {
-        setActiveTab(prev => prev === 'queue' ? 'history' : 'queue');
-        setSelectedIndex(0);
+      setActiveTab(prev => prev === 'queue' ? 'history' : 'queue');
+      setSelectedIndex(0);
     }
 
     const list = activeTab === 'queue' ? queue : history;
@@ -31,11 +42,8 @@ const Queue = () => {
     }
 
     if (key.return && list.length > 0) {
-        // Play the selected song
-        // If it's queue, we might want to jump to it.
-        // If history, play it again.
-        const song = list[selectedIndex];
-        playSong(song);
+      const song = list[selectedIndex];
+      playSong(song);
     }
   });
 
@@ -44,31 +52,35 @@ const Queue = () => {
   return (
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
-        <Text bold underline color={activeTab === 'queue' ? 'green' : 'white'}>Queue ({queue.length})</Text>
-        <Text> | </Text>
-        <Text bold underline color={activeTab === 'history' ? 'green' : 'white'}>History ({history.length})</Text>
-        <Text dimColor> (Tab to switch)</Text>
+        <Text bold underline color={activeTab === 'queue' ? theme.active : theme.muted}>
+          Queue ({queue.length})
+        </Text>
+        <Text color={theme.dim}> | </Text>
+        <Text bold underline color={activeTab === 'history' ? theme.active : theme.muted}>
+          History ({history.length})
+        </Text>
+        <Text dimColor color={theme.dim}> (Tab to switch)</Text>
       </Box>
 
       {currentSong && (
-        <Box marginBottom={1} borderStyle="single" borderColor="green" paddingX={1}>
-            <Text bold>Now Playing: </Text>
-            <Text>{currentSong.title} - {currentSong.artist}</Text>
+        <Box marginBottom={1} borderStyle="single" borderColor={theme.primary} paddingX={1}>
+          <Text bold color={theme.secondary}>Now Playing: </Text>
+          <Text color={theme.text}>{currentSong.title} - {currentSong.artist}</Text>
         </Box>
       )}
 
       <Box flexDirection="column">
         {displayList.length === 0 ? (
-            <Text dimColor>No tracks in {activeTab}.</Text>
+          <Text dimColor color={theme.muted}>No tracks in {activeTab}.</Text>
         ) : (
-            displayList.map((song, index) => (
-                <Box key={`${song.id}-${index}`}>
-                    <Text color={index === selectedIndex ? 'cyan' : 'white'}>
-                        {index === selectedIndex ? '> ' : '  '}
-                        {index + 1}. {song.title} - {song.artist}
-                    </Text>
-                </Box>
-            ))
+          displayList.map((song, index) => (
+            <Box key={`${song.id}-${index}`}>
+              <Text color={index === selectedIndex ? theme.active : theme.muted}>
+                {index === selectedIndex ? '> ' : '  '}
+                {index + 1}. {song.title} - {song.artist}
+              </Text>
+            </Box>
+          ))
         )}
       </Box>
     </Box>

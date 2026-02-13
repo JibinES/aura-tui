@@ -60,23 +60,25 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       if (adBlocker.isAd(song)) {
         console.log('Skipping ad:', song.title);
-        // If we have a queue, play next.
         const state = get();
         if (state.queue.length > 0) {
-            state.nextTrack();
+          state.nextTrack();
         }
         return;
       }
 
-      // Construct YouTube Music URL
-      // MPV with yt-dlp can handle this directly
-      const url = `https://music.youtube.com/watch?v=${song.id}`;
+      // Update state first to show loading
+      set({ currentSong: song, isPlaying: false, currentTime: 0, duration: song.duration });
 
-      // Update state first
-      set({ currentSong: song, isPlaying: true });
+      // Let mpv handle the URL directly - it uses yt-dlp internally
+      const url = `https://www.youtube.com/watch?v=${song.id}`;
 
-      // Play URL
-      await player.play(url);
+      // Set duration in player service (for internal timer)
+      player.setDuration(song.duration);
+
+      // Play - mpv will use yt-dlp to extract stream
+      // The player's 'started' event will trigger the internal timer
+      await player.play(url, song.duration);
     } catch (error) {
       console.error('Failed to play song:', error);
       set({ isPlaying: false });
@@ -137,9 +139,10 @@ export const useStore = create<AppState>((set, get) => ({
 
 // Sync player state with store
 player.subscribe((state) => {
-    useStore.setState({
-        isPlaying: state.playing,
-        currentTime: state.position,
-        // duration: state.duration // Player might update duration
-    });
+  useStore.setState({
+    isPlaying: state.playing,
+    currentTime: state.position,
+    duration: state.duration,
+    volume: state.volume,
+  });
 });
