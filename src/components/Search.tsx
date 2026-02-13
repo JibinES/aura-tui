@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { useStore } from '../store/state';
@@ -17,6 +17,26 @@ const theme = {
   active: '#d8b4fe',
   dim: '#581c87',
 };
+
+// Memoized result item component to prevent unnecessary re-renders
+const ResultItem = React.memo(({ song, isSelected, focusMode }: any) => (
+  <Box>
+    <Text color={focusMode === 'results' && isSelected ? theme.active : theme.muted}>
+      {focusMode === 'results' && isSelected ? '> ' : '  '}
+      {song.title} - {song.artist}
+    </Text>
+  </Box>
+));
+
+// Memoized playlist item component
+const PlaylistItem = React.memo(({ playlist, isSelected, index }: any) => (
+  <Box>
+    <Text color={isSelected ? theme.active : theme.muted}>
+      {isSelected ? '> ' : '  '}
+      {playlist.name} ({playlist.songs.length} songs)
+    </Text>
+  </Box>
+));
 
 const Search = () => {
   const {
@@ -40,6 +60,37 @@ const Search = () => {
     setInputFocused(focusMode === 'input');
     return () => setInputFocused(false);
   }, [focusMode, setInputFocused]);
+
+  // Memoize the search submission handler
+  const handleSubmit = useCallback(async (value: string) => {
+    if (!value.trim()) return;
+
+    setLoading(true);
+    setSearchQuery(value);
+    try {
+      // Use yt-dlp for search - only videos
+      const results = await searchSongs(value, 15);
+
+      const mappedResults = results.map((item) => ({
+        id: item.id,
+        title: item.title,
+        artist: item.artist,
+        album: item.album,
+        duration: item.duration || 0,
+        thumbnail: item.thumbnail
+      }));
+
+      setSearchResults(mappedResults);
+      setSelectedIndex(0);
+      if (mappedResults.length > 0) {
+        setFocusMode('results');
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [setSearchQuery, setSearchResults]);
 
   useInput(async (input, key) => {
     if (focusMode === 'input') {
@@ -130,97 +181,85 @@ const Search = () => {
     }
   });
 
-  const handleSubmit = async (value: string) => {
-    if (!value.trim()) return;
-
-    setLoading(true);
-    setSearchQuery(value);
-    try {
-      // Use yt-dlp for search - only videos
-      const results = await searchSongs(value, 15);
-
-      const mappedResults = results.map((item) => ({
-        id: item.id,
-        title: item.title,
-        artist: item.artist,
-        album: item.album,
-        duration: item.duration || 0,
-        thumbnail: item.thumbnail
-      }));
-
-      setSearchResults(mappedResults);
-      setSelectedIndex(0);
-      if (mappedResults.length > 0) {
-        setFocusMode('results');
-      }
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setLoading(false);
+  // Memoize the results rendering to avoid re-rendering on every keystroke
+  const resultsDisplay = useMemo(() => {
+    if (loading) {
+      return <Text color={theme.secondary}>Searching...</Text>;
     }
-  };
+
+    if (searchResults.length === 0) {
+      return null;
+    }
+
+    return (
+      <Box flexDirection="column" marginTop={1}>
+        <Text underline color={theme.secondary} marginBottom={1}>Results:</Text>
+        {searchResults.map((song, index) => (
+          <ResultItem
+            key={song.id}
+            song={song}
+            isSelected={index === selectedIndex}
+            focusMode={focusMode}
+          />
+        ))}
+      </Box>
+    );
+  }, [searchResults, selectedIndex, focusMode, loading]);
+
+  // Memoize the help text to prevent re-rendering
+  const helpText = useMemo(() => {
+    return focusMode === 'input'
+      ? 'Press Enter to search, Tab/Down to browse results'
+      : 'Enter: Play | A: Add to Queue | P: Add to Playlist | Up/Esc: Return';
+  }, [focusMode]);
+
+  if (focusMode === 'selectPlaylist' && pendingSong) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text bold color={theme.secondary}>Add to Playlist</Text>
+        <Box marginTop={1}>
+          <Text color={theme.text}>Song: {pendingSong.title} - {pendingSong.artist}</Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text color={theme.accent}>Select playlist:</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          {playlists.map((playlist, index) => (
+            <PlaylistItem
+              key={playlist.id}
+              playlist={playlist}
+              isSelected={index === selectedPlaylistIndex}
+              index={index}
+            />
+          ))}
+        </Box>
+        <Box marginTop={1}>
+          <Text color={theme.dim}>Enter: Add | Esc: Cancel</Text>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" padding={1}>
-      {focusMode === 'selectPlaylist' && pendingSong ? (
-        <Box flexDirection="column">
-          <Text bold color={theme.secondary}>Add to Playlist</Text>
-          <Box marginTop={1}>
-            <Text color={theme.text}>Song: {pendingSong.title} - {pendingSong.artist}</Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text color={theme.accent}>Select playlist:</Text>
-          </Box>
-          <Box flexDirection="column" marginTop={1}>
-            {playlists.map((playlist, index) => (
-              <Box key={playlist.id}>
-                <Text color={index === selectedPlaylistIndex ? theme.active : theme.muted}>
-                  {index === selectedPlaylistIndex ? '> ' : '  '}
-                  {playlist.name} ({playlist.songs.length} songs)
-                </Text>
-              </Box>
-            ))}
-          </Box>
-          <Box marginTop={1}>
-            <Text color={theme.dim}>Enter: Add | Esc: Cancel</Text>
-          </Box>
-        </Box>
-      ) : (
-        <>
-          <Box>
-            <Text bold color={focusMode === 'input' ? theme.active : theme.muted}>Search: </Text>
-            <TextInput
-              value={query}
-              onChange={setQuery}
-              onSubmit={handleSubmit}
-              placeholder="Type song name..."
-              focus={focusMode === 'input'}
-            />
-          </Box>
+      <Box>
+        <Text bold color={focusMode === 'input' ? theme.active : theme.muted}>Search: </Text>
+        <TextInput
+          value={query}
+          onChange={setQuery}
+          onSubmit={handleSubmit}
+          placeholder="Type song name..."
+          focus={focusMode === 'input'}
+        />
+      </Box>
 
-          {loading && <Text color={theme.secondary}>Searching...</Text>}
+      {resultsDisplay}
 
-          {!loading && searchResults.length > 0 && (
-            <Box flexDirection="column" marginTop={1}>
-              <Text underline color={theme.secondary} marginBottom={1}>Results:</Text>
-              {searchResults.map((song, index) => (
-                <Box key={song.id}>
-                  <Text color={focusMode === 'results' && index === selectedIndex ? theme.active : theme.muted}>
-                    {focusMode === 'results' && index === selectedIndex ? '> ' : '  '}
-                    {song.title} - {song.artist}
-                  </Text>
-                </Box>
-              ))}
-            </Box>
-          )}
-
-          <Box marginTop={1}>
-            <Text color={theme.dim} dimColor>
-              {focusMode === 'input' ? 'Press Enter to search, Tab/Down to browse results' : 'Enter: Play | A: Add to Queue | P: Add to Playlist | Up/Esc: Return'}
-            </Text>
-          </Box>
-        </>
-      )}
+      <Box marginTop={1}>
+        <Text color={theme.dim} dimColor>
+          {helpText}
+        </Text>
+      </Box>
     </Box>
   );
 };
