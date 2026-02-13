@@ -174,9 +174,11 @@ const Search = () => {
 
       if (key.return && pendingSong) {
         const playlist = playlists[selectedPlaylistIndex];
-        addSongToPlaylist(playlist.id, pendingSong);
-        setFocusMode('results');
-        setPendingSong(null);
+        if (playlist) {
+          addSongToPlaylist(playlist.id, pendingSong);
+          setFocusMode('results');
+          setPendingSong(null);
+        }
       }
     }
   });
@@ -193,7 +195,7 @@ const Search = () => {
 
     return (
       <Box flexDirection="column" marginTop={1}>
-        <Text underline color={theme.secondary} marginBottom={1}>Results:</Text>
+        <Box marginBottom={1}><Text underline color={theme.secondary}>Results:</Text></Box>
         {searchResults.map((song, index) => (
           <ResultItem
             key={song.id}

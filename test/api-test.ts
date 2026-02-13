@@ -24,7 +24,10 @@ try {
   const results = await api.search('Never Gonna Give You Up');
   console.log(`Found ${results.length} results`);
   if (results.length > 0) {
-    console.log('First result:', results[0].name);
+    const firstResult = results[0];
+    if (firstResult) {
+      console.log('First result:', firstResult.name);
+    }
   }
 } catch (error) {
   console.error('API Test Failed:', error);

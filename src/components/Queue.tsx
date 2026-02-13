@@ -43,7 +43,9 @@ const Queue = () => {
 
     if (key.return && list.length > 0) {
       const song = list[selectedIndex];
-      playSong(song);
+      if (song) {
+        playSong(song);
+      }
     }
   });
 

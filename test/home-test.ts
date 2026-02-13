@@ -6,24 +6,33 @@ try {
   await initializeApi();
   const api = getApi();
 
-  // Try getHome (might fail without cookies)
+  // Try getHomeSections (might fail without cookies)
   try {
-    console.log('Fetching Home...');
-    const home = await api.getHome();
+    console.log('Fetching Home Sections...');
+    const home = await api.getHomeSections();
     console.log('Home sections:', home.length);
     if (home.length > 0) {
-        console.log('First section title:', home[0].title);
-        console.log('First section contents:', home[0].contents.length);
+      const firstSection = home[0];
+      if (firstSection) {
+        console.log('First section title:', firstSection.title);
+        console.log('First section contents:', firstSection.contents?.length);
+      }
     }
   } catch (e) {
-      console.log('getHome failed (expected without cookies):', e.message);
+    const error = e instanceof Error ? e : new Error(String(e));
+    console.log('getHomeSections failed (expected without cookies):', error.message);
   }
 
-  // Try getArtist (usually works without cookies) to simulate "Recommendations" or just generic content
-  console.log('Fetching Artist (Muse)...');
-  const artist = await api.getArtist('UCggHbip77axVRWcnfoExqew');
-  console.log('Artist name:', artist.name);
-  console.log('Top songs:', artist.topSongs?.length);
+  // Try a search instead (usually works without cookies)
+  console.log('Searching for Muse...');
+  const searchResults = await api.search('Muse');
+  console.log('Search results:', searchResults.length);
+  if (searchResults.length > 0) {
+    const firstResult = searchResults[0];
+    if (firstResult) {
+      console.log('First result:', firstResult.name);
+    }
+  }
 
 } catch (error) {
   console.error('Test Failed:', error);

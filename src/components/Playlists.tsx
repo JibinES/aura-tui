@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import { useStore, Song } from '../store/state';
+import { useStore, type Song } from '../store/state';
 import {
   getAllPlaylists,
   createPlaylist,
@@ -9,7 +9,7 @@ import {
   renamePlaylist,
   addSongToPlaylist,
   removeSongFromPlaylist,
-  Playlist
+  type Playlist
 } from '../services/playlists';
 
 // Violet theme colors
@@ -55,19 +55,24 @@ const Playlists = () => {
         setSelectedPlaylistIndex(prev => Math.min(prev + 1, playlists.length - 1));
       }
       if (key.return && playlists.length > 0) {
-        setCurrentPlaylist(playlists[selectedPlaylistIndex]);
-        setSelectedSongIndex(0);
-        setViewMode('viewing');
+        const playlist = playlists[selectedPlaylistIndex];
+        if (playlist) {
+          setCurrentPlaylist(playlist);
+          setSelectedSongIndex(0);
+          setViewMode('viewing');
+        }
       }
       if (input === 'n') {
         setViewMode('create');
         setNewPlaylistName('');
       }
       if (input === 'd' && playlists.length > 0) {
-        const playlistId = playlists[selectedPlaylistIndex].id;
-        deletePlaylist(playlistId);
-        loadPlaylists();
-        setSelectedPlaylistIndex(prev => Math.max(0, Math.min(prev, playlists.length - 2)));
+        const playlist = playlists[selectedPlaylistIndex];
+        if (playlist) {
+          deletePlaylist(playlist.id);
+          loadPlaylists();
+          setSelectedPlaylistIndex(prev => Math.max(0, Math.min(prev, playlists.length - 2)));
+        }
       }
     } else if (viewMode === 'viewing' && currentPlaylist) {
       if (key.escape) {
@@ -81,19 +86,27 @@ const Playlists = () => {
         setSelectedSongIndex(prev => Math.min(prev + 1, currentPlaylist.songs.length - 1));
       }
       if (key.return && currentPlaylist.songs.length > 0) {
-        playSong(currentPlaylist.songs[selectedSongIndex]);
+        const song = currentPlaylist.songs[selectedSongIndex];
+        if (song) {
+          playSong(song);
+        }
       }
       if (input === 'a' && currentPlaylist.songs.length > 0) {
-        addToQueue(currentPlaylist.songs[selectedSongIndex]);
+        const song = currentPlaylist.songs[selectedSongIndex];
+        if (song) {
+          addToQueue(song);
+        }
       }
       if (input === 'd' && currentPlaylist.songs.length > 0) {
-        const songId = currentPlaylist.songs[selectedSongIndex].id;
-        removeSongFromPlaylist(currentPlaylist.id, songId);
-        loadPlaylists();
-        const updated = getAllPlaylists().find(p => p.id === currentPlaylist.id);
-        if (updated) {
-          setCurrentPlaylist(updated);
-          setSelectedSongIndex(prev => Math.max(0, Math.min(prev, updated.songs.length - 1)));
+        const song = currentPlaylist.songs[selectedSongIndex];
+        if (song) {
+          removeSongFromPlaylist(currentPlaylist.id, song.id);
+          loadPlaylists();
+          const updated = getAllPlaylists().find(p => p.id === currentPlaylist.id);
+          if (updated) {
+            setCurrentPlaylist(updated);
+            setSelectedSongIndex(prev => Math.max(0, Math.min(prev, updated.songs.length - 1)));
+          }
         }
       }
     } else if (viewMode === 'addSong') {
@@ -108,11 +121,13 @@ const Playlists = () => {
         setSelectedPlaylistIndex(prev => Math.min(prev + 1, playlists.length - 1));
       }
       if (key.return && playlists.length > 0 && pendingSong) {
-        const playlistId = playlists[selectedPlaylistIndex].id;
-        addSongToPlaylist(playlistId, pendingSong);
-        loadPlaylists();
-        setPendingSong(null);
-        setViewMode('list');
+        const playlist = playlists[selectedPlaylistIndex];
+        if (playlist) {
+          addSongToPlaylist(playlist.id, pendingSong);
+          loadPlaylists();
+          setPendingSong(null);
+          setViewMode('list');
+        }
       }
     }
   });

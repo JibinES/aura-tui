@@ -37,7 +37,7 @@ const Equalizer = ({ isPlaying }: { isPlaying: boolean }) => {
     for (let row = maxHeight; row >= 1; row--) {
       let line = '';
       for (let col = 0; col < barCount; col++) {
-        line += bars[col] >= row ? '█' : ' ';
+        line += (bars[col] ?? 0) >= row ? '█' : ' ';
         line += ' '; // spacing between bars
       }
       lines.push(line);
@@ -50,7 +50,7 @@ const Equalizer = ({ isPlaying }: { isPlaying: boolean }) => {
   return (
     <Box flexDirection="column" alignItems="center" paddingX={1}>
       {equalizerLines.map((line, i) => (
-        <Text key={i} color={i < 2 ? '#d8b4fe' : i < 4 ? '#a855f7' : '#7c3aed'}>
+        <Text key={`eq-${i}`} color={i < 2 ? '#d8b4fe' : i < 4 ? '#a855f7' : '#7c3aed'}>
           {line}
         </Text>
       ))}

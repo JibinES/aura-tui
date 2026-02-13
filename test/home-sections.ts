@@ -14,5 +14,6 @@ try {
       console.log(`Contents: ${section.contents?.length}`);
   });
 } catch (e) {
-  console.log('getHomeSections failed:', e.message);
+  const error = e instanceof Error ? e : new Error(String(e));
+  console.log('getHomeSections failed:', error.message);
 }
