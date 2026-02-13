@@ -6,7 +6,6 @@ import { isFirstRun, markSetupCompleted, resetCookie } from '../utils/config';
 import Player from './Player';
 import Home from './Home';
 import Search from './Search';
-import Library from './Library';
 import Queue from './Queue';
 import Help from './Help';
 import Playlists from './Playlists';
@@ -84,14 +83,14 @@ const App = () => {
     // Don't handle global shortcuts if input is focused
     if (isInputFocused) return;
 
-    if (key.escape || (input === 'q' && view === 'home')) {
+    // Quit with Ctrl+Q
+    if (input === 'q' && key.ctrl) {
       exit();
     }
 
     // Navigation
     if (input === '1') setView('home');
     if (input === '2') setView('search');
-    if (input === '3') setView('library');
     if (input === '4') setView('queue');
     if (input === '5') setView('playlists');
     if (input === '?') setView('help');
@@ -127,7 +126,6 @@ const App = () => {
     switch (view) {
       case 'home': return <Home />;
       case 'search': return <Search />;
-      case 'library': return <Library />;
       case 'queue': return <Queue />;
       case 'playlists': return <Playlists />;
       case 'help': return <Help />;
@@ -143,10 +141,10 @@ const App = () => {
         <Box marginLeft={2}>
           <Text color={view === 'home' ? theme.active : theme.muted}>[1] Home </Text>
           <Text color={view === 'search' ? theme.active : theme.muted}>[2] Search </Text>
-          <Text color={view === 'library' ? theme.active : theme.muted}>[3] Library </Text>
           <Text color={view === 'queue' ? theme.active : theme.muted}>[4] Queue </Text>
           <Text color={view === 'playlists' ? theme.active : theme.muted}>[5] Playlists </Text>
           <Text color={view === 'help' ? theme.active : theme.muted}>[?] Help</Text>
+          <Text color={theme.dim}> | Ctrl+Q: Quit</Text>
         </Box>
       </Box>
 

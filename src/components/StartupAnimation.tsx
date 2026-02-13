@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 
-// Anime girl ASCII art
-const animeGirl = `
+// Wizard with wand down
+const wizardNormal = `
                    ____
                  .'* *.'
               __/_*_*(_
              / _______ \\
             _\\_)/___\\(_/_
-           / _((\- -/))_ \\
+           / _((\\- -/))_ \\
            \\ \\())(-)(()/ /
             ' \\(((()))/ '
            / ' \\)).))/ ' \\
@@ -27,19 +27,19 @@ _.-'       |      BBb       '-.  '-.
 (________mrf\\____.dBBBb.________)____)
 `;
 
-// Blinking version (eyes closed with - -)
-const animeGirlBlink = `
+// Wizard waving wand (arm raised)
+const wizardWaving = `
                    ____
-                 .'* *.'
-              __/_*_*(_
-             / _______ \\
+                 .'* *.'     ✨
+              __/_*_*(_        *
+             / _______ \\      ★
             _\\_)/___\\(_/_
-           / _((\- -/))_ \\
-           \\ \\())(-)( ()/ /
-            ' \\(((()))/ '
-           / ' \\)).))/ ' \\
-          / _ \\ - | - /_  \\
-         (   ( .;''';. .'  )
+           / _((\\ o o/))_ \\
+           \\ \\())(_)(()/ /
+            ' \\(((()))/ '    /
+           / ' \\)).))/ '    /
+          / _ \\ - | - /    🌟
+         (   ( .;''';.'.)
          _\\"__ /    )\\ __"/_
            \\/  \\   ' /  \\/
             .'  '...' ' )
@@ -53,11 +53,21 @@ _.-'       |      BBb       '-.  '-.
 (________mrf\\____.dBBBb.________)____)
 `;
 
+// Star patterns for different phases
+const starPatterns = [
+  '           ✨                    ',
+  '       ✨      ★               ',
+  '   ★       ✨      ★           ',
+  '       ★      ✨      ★   ✨   ',
+  '   ✨      ★      ✨      ★     ',
+  '       ★  ✨  ★  ✨  ★         ',
+];
+
 const loadingTexts = [
-  'Initializing...',
-  'Loading your music...',
-  'Connecting to YouTube Music...',
-  'Preparing playlists...',
+  'Summoning music spirits...',
+  'Casting playlist spells...',
+  'Enchanting the queue...',
+  'Preparing magical melodies...',
   'Almost ready...',
 ];
 
@@ -70,16 +80,22 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
   onComplete,
   duration = 3000
 }) => {
-  const [blink, setBlink] = useState(false);
+  const [isWaving, setIsWaving] = useState(false);
+  const [starPattern, setStarPattern] = useState(0);
   const [textIndex, setTextIndex] = useState(0);
   const [dots, setDots] = useState('');
 
   useEffect(() => {
-    // Blink animation
-    const blinkInterval = setInterval(() => {
-      setBlink(true);
-      setTimeout(() => setBlink(false), 150);
-    }, 2000);
+    // Wand waving animation
+    const waveInterval = setInterval(() => {
+      setIsWaving(true);
+      setTimeout(() => setIsWaving(false), 400);
+    }, 800);
+
+    // Star pattern animation
+    const starInterval = setInterval(() => {
+      setStarPattern(prev => (prev + 1) % starPatterns.length);
+    }, 300);
 
     // Loading text animation
     const textInterval = setInterval(() => {
@@ -93,14 +109,16 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
 
     // Complete animation
     const timeout = setTimeout(() => {
-      clearInterval(blinkInterval);
+      clearInterval(waveInterval);
+      clearInterval(starInterval);
       clearInterval(textInterval);
       clearInterval(dotsInterval);
       onComplete();
     }, duration);
 
     return () => {
-      clearInterval(blinkInterval);
+      clearInterval(waveInterval);
+      clearInterval(starInterval);
       clearInterval(textInterval);
       clearInterval(dotsInterval);
       clearTimeout(timeout);
@@ -116,8 +134,13 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
       padding={1}
     >
       <Box flexDirection="column" alignItems="center">
-        {/* Anime girl ASCII art */}
-        <Text color="#c084fc">{blink ? animeGirlBlink : animeGirl}</Text>
+        {/* Stars above wizard */}
+        <Box marginBottom={1}>
+          <Text color="#fbbf24">{starPatterns[starPattern]}</Text>
+        </Box>
+
+        {/* Wizard ASCII art */}
+        <Text color="#c084fc">{isWaving ? wizardWaving : wizardNormal}</Text>
 
         {/* App title */}
         <Box marginTop={1}>
@@ -147,6 +170,11 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
           <Text color="#8b5cf6">
             {loadingTexts[textIndex]}{dots}
           </Text>
+        </Box>
+
+        {/* Magic sparkles */}
+        <Box marginTop={1}>
+          <Text color="#fbbf24">✨ ★ ✨</Text>
         </Box>
       </Box>
     </Box>
