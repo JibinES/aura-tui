@@ -93,10 +93,11 @@ export const useStore = create<AppState>((set, get) => ({
     const state = get();
     if (state.queue.length > 0) {
       const nextSong = state.queue[0];
+      if (!nextSong) return;
       const remainingQueue = state.queue.slice(1);
 
       if (state.currentSong) {
-        set((s) => ({ history: [...s.history, s.currentSong!] }));
+        set((s) => ({ history: s.currentSong ? [...s.history, s.currentSong] : s.history }));
       }
 
       await state.playSong(nextSong);
@@ -109,10 +110,11 @@ export const useStore = create<AppState>((set, get) => ({
       const state = get();
       if (state.history.length > 0) {
           const prevSong = state.history[state.history.length - 1];
+          if (!prevSong) return;
           const newHistory = state.history.slice(0, -1);
 
           if (state.currentSong) {
-              set((s) => ({ queue: [s.currentSong!, ...s.queue] }));
+              set((s) => ({ queue: s.currentSong ? [s.currentSong, ...s.queue] : s.queue }));
           }
 
           await state.playSong(prevSong);

@@ -36,7 +36,7 @@ export interface SearchResult {
 
 export const searchVideos = async (query: string, limit: number = 20): Promise<SearchResult[]> => {
   try {
-    const results = await YouTube.search(query, { limit });
+    const results = await YouTube.search(query, { limit, type: 'video' });
 
     return results.map(video => ({
       id: video.id || '',

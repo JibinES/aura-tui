@@ -1,6 +1,6 @@
 import Conf from 'conf';
 import path from 'path';
-import { Song } from '../store/state';
+import type { Song } from '../store/state';
 
 export interface Playlist {
   id: string;

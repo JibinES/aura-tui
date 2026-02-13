@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { getApi } from '../api/ytmusic';
-import { useStore, Song } from '../store/state';
+import { useStore, type Song } from '../store/state';
 
 // Violet theme colors
 const theme = {
@@ -108,7 +108,7 @@ const Home = () => {
         borderStyle="round"
         borderColor={activeLayer === 'sections' ? theme.primary : theme.dim}
       >
-        <Text underline bold color={theme.secondary} marginBottom={1}>Sections</Text>
+        <Box marginBottom={1}><Text underline bold color={theme.secondary}>Sections</Text></Box>
         {sections.map((section, idx) => (
           <Text
             key={idx}
@@ -129,7 +129,7 @@ const Home = () => {
         borderColor={activeLayer === 'items' ? theme.primary : theme.dim}
         marginLeft={1}
       >
-        <Text underline bold color={theme.secondary} marginBottom={1}>{currentSection.title}</Text>
+        <Box marginBottom={1}><Text underline bold color={theme.secondary}>{currentSection.title}</Text></Box>
         {items.length === 0 ? (
           <Text color={theme.muted}>No items in this section</Text>
         ) : (
