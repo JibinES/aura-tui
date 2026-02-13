@@ -6,9 +6,9 @@ import { isFirstRun, markSetupCompleted, resetCookie } from '../utils/config';
 import Player from './Player';
 import Home from './Home';
 import Search from './Search';
+import Library from './Library';
 import Queue from './Queue';
 import Help from './Help';
-import Library from './Library';
 import StartupAnimation from './StartupAnimation';
 import Setup from './Setup';
 
@@ -32,7 +32,7 @@ const animeGirl = `
           __/_*_*(_
          / _______ \\
         _\\_)/___\\(_/_
-       / _((\- -/))_ \\
+       / _((\\- -/))_ \\
        \\ \\())(-)(()/ /
         ' \\(((()))/ '
        / ' \\)).))/ ' \\
@@ -95,7 +95,7 @@ const App = () => {
     if (input === '?') setView('help');
     if (input === '/') setView('search');
 
-    // Reset cookie - press 'r' to reset and go back to setup
+    // Reset cookie - press Ctrl+R to reset and go back to setup
     if (input === 'r' && key.ctrl) {
       resetCookie();
       setAppState('setup');
