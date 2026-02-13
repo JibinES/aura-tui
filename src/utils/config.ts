@@ -45,4 +45,24 @@ export const getCookie = (): string => config.get('cookie');
 export const setCookie = (cookie: string) => config.set('cookie', cookie);
 export const getKeybindings = (): Keybindings => config.get('keybindings');
 
+// Check if this is the first run (no cookie set and never skipped setup)
+export const isFirstRun = (): boolean => {
+  const cookie = config.get('cookie');
+  const setupCompleted = config.get('setupCompleted' as any);
+  return !cookie && !setupCompleted;
+};
+
+export const markSetupCompleted = () => config.set('setupCompleted' as any, true);
+
+// Reset cookie and setup state
+export const resetCookie = () => {
+  config.set('cookie', '');
+  config.delete('setupCompleted' as any);
+};
+
+// Clear all config
+export const resetAllConfig = () => {
+  config.clear();
+};
+
 export default config;

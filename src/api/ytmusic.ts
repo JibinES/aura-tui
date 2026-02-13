@@ -9,14 +9,24 @@ export const initializeApi = async (): Promise<YTMusic> => {
   apiInstance = new YTMusic();
   const cookie = getCookie();
 
-  // Even if no cookie is present, we can initialize, but some features might be limited
-  // However, ytmusic-api usually requires initialization to work properly
+  // Initialize with options to help avoid blocks
+  const initOptions: any = {};
+
+  if (cookie && cookie.length > 0) {
+    initOptions.cookies = cookie;
+  }
+
+  // Try to initialize
   try {
-    await apiInstance.initialize({ cookies: cookie });
+    await apiInstance.initialize(initOptions);
   } catch (error) {
-    console.warn('Failed to initialize YTMusic API with cookie:', error);
-    // Fallback to guest mode if possible, or just re-throw if critical
-    await apiInstance.initialize();
+    console.warn('Failed to initialize YTMusic API:', error);
+    // Try without any options
+    try {
+      await apiInstance.initialize();
+    } catch (fallbackError) {
+      console.error('Failed to initialize in fallback mode:', fallbackError);
+    }
   }
 
   return apiInstance;
