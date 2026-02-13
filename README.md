@@ -4,29 +4,39 @@ A terminal-based YouTube Music client built with Bun and Ink.
 
 ## Features
 
-- **Search**: Search for songs, artists, and albums
-- **Playback**: Play audio using `mpv` (supports play/pause, volume, seek)
+- **Search**: Search for songs/videos with yt-dlp integration
+- **Playback**: Play audio using `mpv` with yt-dlp for stream extraction
 - **Queue**: Manage your playback queue and view history
+- **Playlists**: Create and manage unlimited local playlists
 - **Home**: View curated music sections (Trending, Top Hits, Rock Classics, etc.)
-- **Ad Blocking**: Basic ad skipping logic included
 - **Beautiful UI**: Violet-themed TUI with animated equalizer
 
 ## Installation
 
-1. Ensure you have [Bun](https://bun.sh) and [mpv](https://mpv.io) installed.
+1. **Prerequisites**: Install [Bun](https://bun.sh), [mpv](https://mpv.io), and [yt-dlp](https://github.com/yt-dlp/yt-dlp)
    ```bash
+   # Install Bun
    curl -fsSL https://bun.sh/install | bash
-   # Install mpv via your package manager (e.g., brew install mpv, sudo apt install mpv)
+
+   # Install mpv (choose your package manager)
+   brew install mpv          # macOS
+   sudo apt install mpv      # Ubuntu/Debian
+   sudo pacman -S mpv        # Arch
+
+   # Install yt-dlp
+   pip install yt-dlp
+   # or
+   brew install yt-dlp       # macOS
    ```
 
-2. Clone and install dependencies:
+2. Clone and install:
    ```bash
    git clone https://github.com/CipherSaber/AuraTUI.git
    cd AuraTUI
    bun install
    ```
 
-3. Run the application:
+3. Run:
    ```bash
    bun run dev
    ```
@@ -34,62 +44,104 @@ A terminal-based YouTube Music client built with Bun and Ink.
 ## Usage
 
 ### First Run
-On first launch, AuraTUI will show:
 1. **Startup Animation** (2.5 seconds)
-2. **Setup Screen** where you can optionally paste your YouTube cookie
-   - Press Enter to set up cookie (for personalized features)
-   - Press 'S' to skip (public mode)
+2. **Setup Screen** - Optional cookie setup (currently limited due to API blocks)
+   - Press Enter to set up (optional)
+   - Press 'S' to skip (recommended - app works great without it!)
 
-### Controls
+### Keyboard Controls
 
-- **Navigation**: `1` (Home), `2` (Search), `3` (Library), `4` (Queue), `?` (Help)
-- **Search**: `/` to focus search bar
-- **Playback**:
-  - `Space`: Play/Pause
-  - `n`: Next Track
-  - `p`: Previous Track
-  - `+` / `-`: Volume Up/Down
-- **Lists**: `Up`/`Down` to navigate, `Enter` to select
-- **Reset**: `Ctrl+R` to reset cookie and return to setup
+#### Navigation
+- `1` - Home feed
+- `2` - Search
+- `3` - Library (limited)
+- `4` - Queue
+- `5` - **Playlists** (local playlists!)
+- `?` - Help
+- `/` - Quick search
+- `Q` or `Esc` - Quit (from home)
 
-## About the Cookie
+#### Search View
+- `Enter` - Submit search / Play selected song
+- `Tab` or `Esc` - Exit search input and browse results
+- `↑/↓` - Navigate results
+- `A` - **Add to Queue**
+- `P` - **Add to Playlist** (shows playlist selector)
 
-**Note**: Due to YouTube actively blocking unofficial API access, the cookie is currently **not functional** for personalized features like your library, playlists, or recommendations.
+#### Playlists View
+- `N` - Create new playlist
+- `Enter` - View/Play playlist
+- `D` - Delete playlist or song (context-sensitive)
+- `A` - Add song to queue (when viewing playlist)
+- `Esc` - Go back
 
-The app works great without authentication using public YouTube search!
+#### Playback
+- `Space` - Play/Pause
+- `N` - Next Track
+- `P` - Previous Track
+- `+/-` - Volume Up/Down
 
-### How to get your cookie (for future use):
+### Playlist System
 
-1. Open **music.youtube.com** in your browser and login
-2. Open Developer Tools (F12)
-3. Go to Network tab and refresh
-4. Click any request to music.youtube.com
-5. Copy the entire 'cookie' value from Request Headers
-6. Paste when prompted in the setup screen
+AuraTUI features a **fully local** playlist system:
+- Create unlimited playlists
+- Add any song from search results
+- Playlists stored in `~/.config/ytmusic-tui/playlists.json`
+- No cloud sync needed - complete privacy!
 
-Your cookie will be securely stored at:
-- Linux/Mac: `~/.config/ytmusic-tui-nodejs/config.json`
-- Windows: `%APPDATA%\ytmusic-tui-nodejs\config.json`
+**Workflow:**
+1. Press `5` to go to Playlists
+2. Press `N` to create a new playlist
+3. Go to Search (`2`), find songs
+4. Press `P` on any song to add to a playlist
+5. Navigate playlists with arrow keys, play with `Enter`
 
 ## Technical Details
 
 - **Runtime**: Bun.js
 - **UI**: Ink (React for terminal)
-- **API**: youtube-sr (for search), fallback from ytmusic-api due to YouTube blocking
-- **Audio**: node-mpv with yt-dlp for playback
+- **Search**: yt-dlp via youtube-sr fallback
+- **Audio**: node-mpv with yt-dlp for stream extraction
 - **State**: Zustand
+- **Storage**: Local config files via Conf
 
-## Known Issues
+## Configuration
 
-- YouTube Music's unofficial API (`ytmusic-api`) is currently blocked by YouTube (400 errors)
-- We use `youtube-sr` as a working alternative for search
-- Personalized features (your library, playlists) are limited until we find a working auth solution
-- All public features work perfectly: search, play, queue, trending music
+Config files are stored at:
+- **Linux/Mac**: `~/.config/ytmusic-tui-nodejs/`
+  - `config.json` - App settings
+  - `playlists.json` - Your playlists
+- **Windows**: `%APPDATA%\ytmusic-tui-nodejs\`
+
+## Known Limitations
+
+- YouTube Music's unofficial API is blocked (400 errors)
+- Library/personalized features limited without working auth
+- **All public features work**: search, play, queue, playlists!
+
+## Troubleshooting
+
+### "mpv not found"
+Install mpv: `brew install mpv` (macOS) or `sudo apt install mpv` (Linux)
+
+### "yt-dlp not found"
+Install yt-dlp: `pip install yt-dlp` or `brew install yt-dlp`
+
+### Search not working
+Make sure yt-dlp is installed and accessible from your PATH.
 
 ## Contributing
 
-Pull requests welcome! This is an active project and we're working on finding better YouTube Music API alternatives.
+Pull requests welcome! Areas for improvement:
+- Better YouTube Music API alternative
+- Playlist import/export
+- Lyrics display
+- More themes
 
 ## License
 
 MIT
+
+---
+
+**Made with ♪ for music lovers who live in the terminal**
