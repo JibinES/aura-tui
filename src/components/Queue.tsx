@@ -1,22 +1,11 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { useStore } from '../store/state';
-
-// Violet theme colors
-const theme = {
-  primary: '#a855f7',
-  secondary: '#c084fc',
-  accent: '#8b5cf6',
-  highlight: '#7c3aed',
-  muted: '#6b21a8',
-  text: '#e9d5ff',
-  border: '#9333ea',
-  active: '#d8b4fe',
-  dim: '#581c87',
-};
+import { theme } from '../utils/theme';
+import { getScrollWindow } from '../utils/scrollWindow';
 
 const Queue = () => {
-  const { queue, currentSong, playSong, history, setView } = useStore();
+  const { queue, currentSong, playSong, history, setView, moveQueueItem, removeFromQueue } = useStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
 
@@ -33,7 +22,7 @@ const Queue = () => {
 
     const list = activeTab === 'queue' ? queue : history;
 
-    if (key.downArrow) {
+    if (key.downArrow && list.length > 0) {
       setSelectedIndex(prev => Math.min(prev + 1, list.length - 1));
     }
 
@@ -43,8 +32,32 @@ const Queue = () => {
 
     if (key.return && list.length > 0) {
       const song = list[selectedIndex];
-      if (song) {
+      if (song && activeTab === 'queue') {
+        // Remove the song from the queue before playing to avoid duplicates
+        const newQueue = [...queue.slice(0, selectedIndex), ...queue.slice(selectedIndex + 1)];
+        useStore.setState({ queue: newQueue });
         playSong(song);
+      } else if (song) {
+        playSong(song);
+      }
+    }
+
+    // Queue reordering and removal (only in queue tab)
+    if (activeTab === 'queue' && queue.length > 0) {
+      if (input === 'k' && selectedIndex > 0) {
+        moveQueueItem(selectedIndex, selectedIndex - 1);
+        setSelectedIndex(selectedIndex - 1);
+      }
+      if (input === 'j' && selectedIndex < queue.length - 1) {
+        moveQueueItem(selectedIndex, selectedIndex + 1);
+        setSelectedIndex(selectedIndex + 1);
+      }
+      if (input === 'x') {
+        removeFromQueue(selectedIndex);
+        // Adjust selection if we removed the last item
+        if (selectedIndex >= queue.length - 1) {
+          setSelectedIndex(Math.max(0, queue.length - 2));
+        }
       }
     }
   });
@@ -75,15 +88,35 @@ const Queue = () => {
         {displayList.length === 0 ? (
           <Text dimColor color={theme.muted}>No tracks in {activeTab}.</Text>
         ) : (
-          displayList.map((song, index) => (
-            <Box key={`${song.id}-${index}`}>
-              <Text color={index === selectedIndex ? theme.active : theme.muted}>
-                {index === selectedIndex ? '> ' : '  '}
-                {index + 1}. {song.title} - {song.artist}
-              </Text>
-            </Box>
-          ))
+          (() => {
+            const { start, end } = getScrollWindow(displayList.length, selectedIndex);
+            return (
+              <>
+                {start > 0 && <Text color={theme.dim}>  ↑ {start} more above</Text>}
+                {displayList.slice(start, end).map((song, i) => {
+                  const index = start + i;
+                  return (
+                    <Box key={`${song.id}-${index}`}>
+                      <Text color={index === selectedIndex ? theme.active : theme.muted}>
+                        {index === selectedIndex ? '> ' : '  '}
+                        {index + 1}. {song.title} - {song.artist}
+                      </Text>
+                    </Box>
+                  );
+                })}
+                {end < displayList.length && <Text color={theme.dim}>  ↓ {displayList.length - end} more below</Text>}
+              </>
+            );
+          })()
         )}
+      </Box>
+
+      <Box marginTop={1}>
+        <Text color={theme.dim}>
+          {activeTab === 'queue'
+            ? 'Enter: Play | j/k: Reorder | x: Remove | Tab: History'
+            : 'Enter: Play | Tab: Queue'}
+        </Text>
       </Box>
     </Box>
   );

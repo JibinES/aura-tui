@@ -1,25 +1,26 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import { useStore } from '../store/state';
+import { useStore, type Song } from '../store/state';
 import { searchSongs } from '../services/ytdlp';
 import { getAllPlaylists, addSongToPlaylist } from '../services/playlists';
+import { theme } from '../utils/theme';
+import { getScrollWindow } from '../utils/scrollWindow';
 
-// Violet theme colors
-const theme = {
-  primary: '#a855f7',
-  secondary: '#c084fc',
-  accent: '#8b5cf6',
-  highlight: '#7c3aed',
-  muted: '#6b21a8',
-  text: '#e9d5ff',
-  border: '#9333ea',
-  active: '#d8b4fe',
-  dim: '#581c87',
-};
+interface ResultItemProps {
+  song: Song;
+  isSelected: boolean;
+  focusMode: string;
+}
+
+interface PlaylistItemProps {
+  playlist: { name: string; songs: any[] };
+  isSelected: boolean;
+  index: number;
+}
 
 // Memoized result item component to prevent unnecessary re-renders
-const ResultItem = React.memo(({ song, isSelected, focusMode }: any) => (
+const ResultItem = React.memo(({ song, isSelected, focusMode }: ResultItemProps) => (
   <Box>
     <Text color={focusMode === 'results' && isSelected ? theme.active : theme.muted}>
       {focusMode === 'results' && isSelected ? '> ' : '  '}
@@ -29,7 +30,7 @@ const ResultItem = React.memo(({ song, isSelected, focusMode }: any) => (
 ));
 
 // Memoized playlist item component
-const PlaylistItem = React.memo(({ playlist, isSelected, index }: any) => (
+const PlaylistItem = React.memo(({ playlist, isSelected, index }: PlaylistItemProps) => (
   <Box>
     <Text color={isSelected ? theme.active : theme.muted}>
       {isSelected ? '> ' : '  '}
@@ -87,100 +88,103 @@ const Search = () => {
       }
     } catch (error) {
       console.error('Search failed:', error);
+      useStore.getState().setError('Search failed. Please try again.');
     } finally {
       setLoading(false);
     }
   }, [setSearchQuery, setSearchResults]);
 
-  useInput(async (input, key) => {
-    if (focusMode === 'input') {
-      // Tab key to escape search input
-      if (key.tab || key.escape) {
-        setFocusMode('results');
-        if (searchResults.length > 0) {
+  useInput((input, key) => {
+    (async () => {
+      if (focusMode === 'input') {
+        // Tab key to escape search input
+        if (key.tab || key.escape) {
+          setFocusMode('results');
+          if (searchResults.length > 0) {
+            setSelectedIndex(0);
+          }
+          return;
+        }
+        if (key.downArrow && searchResults.length > 0) {
+          setFocusMode('results');
           setSelectedIndex(0);
         }
         return;
       }
-      if (key.downArrow && searchResults.length > 0) {
-        setFocusMode('results');
-        setSelectedIndex(0);
-      }
-      return;
-    }
 
-    if (focusMode === 'results') {
-      if (key.upArrow) {
-        if (selectedIndex === 0) {
-          setFocusMode('input');
-        } else {
-          setSelectedIndex(prev => prev - 1);
-        }
-      }
-
-      if (key.downArrow) {
-        setSelectedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
-      }
-
-      if (key.return) {
-        const song = searchResults[selectedIndex];
-        if (song) {
-          await playSong(song);
-        }
-      }
-
-      // 'a' key to add to queue
-      if (input === 'a') {
-        const song = searchResults[selectedIndex];
-        if (song) {
-          addToQueue(song);
-        }
-      }
-
-      // 'p' key to add to playlist
-      if (input === 'p') {
-        const song = searchResults[selectedIndex];
-        if (song) {
-          const allPlaylists = getAllPlaylists();
-          if (allPlaylists.length === 0) {
-            // Show message - no playlists
-            return;
+      if (focusMode === 'results') {
+        if (key.upArrow) {
+          if (selectedIndex === 0) {
+            setFocusMode('input');
+          } else {
+            setSelectedIndex(prev => prev - 1);
           }
-          setPendingSong(song);
-          setPlaylists(allPlaylists);
-          setSelectedPlaylistIndex(0);
-          setFocusMode('selectPlaylist');
+        }
+
+        if (key.downArrow) {
+          setSelectedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
+        }
+
+        if (key.return) {
+          const song = searchResults[selectedIndex];
+          if (song) {
+            await playSong(song, true);
+          }
+        }
+
+        // 'a' key to add to queue
+        if (input === 'a') {
+          const song = searchResults[selectedIndex];
+          if (song) {
+            addToQueue(song);
+          }
+        }
+
+        // 'p' key to add to playlist
+        if (input === 'p') {
+          const song = searchResults[selectedIndex];
+          if (song) {
+            const allPlaylists = getAllPlaylists();
+            if (allPlaylists.length === 0) {
+              // Show message - no playlists
+              return;
+            }
+            setPendingSong(song);
+            setPlaylists(allPlaylists);
+            setSelectedPlaylistIndex(0);
+            setFocusMode('selectPlaylist');
+          }
+        }
+
+        if (key.escape || input === '/') {
+          setFocusMode('input');
         }
       }
 
-      if (key.escape || input === '/') {
-        setFocusMode('input');
-      }
-    }
-
-    if (focusMode === 'selectPlaylist') {
-      if (key.escape) {
-        setFocusMode('results');
-        setPendingSong(null);
-      }
-
-      if (key.upArrow) {
-        setSelectedPlaylistIndex(prev => Math.max(prev - 1, 0));
-      }
-
-      if (key.downArrow) {
-        setSelectedPlaylistIndex(prev => Math.min(prev + 1, playlists.length - 1));
-      }
-
-      if (key.return && pendingSong) {
-        const playlist = playlists[selectedPlaylistIndex];
-        if (playlist) {
-          addSongToPlaylist(playlist.id, pendingSong);
+      if (focusMode === 'selectPlaylist') {
+        if (key.escape) {
           setFocusMode('results');
           setPendingSong(null);
         }
+
+        if (key.upArrow) {
+          setSelectedPlaylistIndex(prev => Math.max(prev - 1, 0));
+        }
+
+        if (key.downArrow) {
+          setSelectedPlaylistIndex(prev => Math.min(prev + 1, playlists.length - 1));
+        }
+
+        if (key.return && pendingSong) {
+          const playlist = playlists[selectedPlaylistIndex];
+          if (playlist) {
+            addSongToPlaylist(playlist.id, pendingSong);
+            setFocusMode('results');
+            setPendingSong(null);
+          }
+        }
       }
-    }
+    })().catch(err => console.error('Input handler error:', err));
   });
 
   // Memoize the results rendering to avoid re-rendering on every keystroke
@@ -193,17 +197,20 @@ const Search = () => {
       return null;
     }
 
+    const { start, end } = getScrollWindow(searchResults.length, selectedIndex);
     return (
       <Box flexDirection="column" marginTop={1}>
         <Box marginBottom={1}><Text underline color={theme.secondary}>Results:</Text></Box>
-        {searchResults.map((song, index) => (
+        {start > 0 && <Text color={theme.dim}>  ↑ {start} more above</Text>}
+        {searchResults.slice(start, end).map((song, i) => (
           <ResultItem
             key={song.id}
             song={song}
-            isSelected={index === selectedIndex}
+            isSelected={(start + i) === selectedIndex}
             focusMode={focusMode}
           />
         ))}
+        {end < searchResults.length && <Text color={theme.dim}>  ↓ {searchResults.length - end} more below</Text>}
       </Box>
     );
   }, [searchResults, selectedIndex, focusMode, loading]);

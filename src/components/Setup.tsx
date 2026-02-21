@@ -10,7 +10,6 @@ interface SetupProps {
 const Setup: React.FC<SetupProps> = ({ onComplete }) => {
   const [step, setStep] = useState<'welcome' | 'cookie' | 'confirm'>('welcome');
   const [cookie, setCookieValue] = useState('');
-  const [skipAuth, setSkipAuth] = useState(false);
 
   useInput((input, key) => {
     if (step === 'welcome') {
@@ -18,7 +17,6 @@ const Setup: React.FC<SetupProps> = ({ onComplete }) => {
         setStep('cookie');
       }
       if (input === 's' || input === 'S') {
-        setSkipAuth(true);
         onComplete();
       }
     }

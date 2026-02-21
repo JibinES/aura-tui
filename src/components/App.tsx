@@ -3,6 +3,9 @@ import { Box, Text, useInput, useApp } from 'ink';
 import { useStore } from '../store/state';
 import { initializeApi } from '../api/ytmusic';
 import { isFirstRun, markSetupCompleted, resetCookie } from '../utils/config';
+import { cacheService } from '../services/cache';
+import { player } from '../services/player';
+import { execSync } from 'child_process';
 import Player from './Player';
 import Home from './Home';
 import Search from './Search';
@@ -11,19 +14,7 @@ import Help from './Help';
 import Playlists from './Playlists';
 import StartupAnimation from './StartupAnimation';
 import Setup from './Setup';
-
-// Violet theme colors
-const theme = {
-  primary: '#a855f7',      // Purple 500
-  secondary: '#c084fc',    // Purple 400
-  accent: '#8b5cf6',       // Violet 500
-  highlight: '#7c3aed',    // Violet 600
-  muted: '#6b21a8',        // Purple 800
-  text: '#e9d5ff',         // Purple 200
-  border: '#9333ea',       // Purple 600
-  active: '#d8b4fe',       // Purple 300
-  dim: '#581c87',          // Purple 900
-};
+import { theme } from '../utils/theme';
 
 // Anime girl ASCII art - always visible in the TUI
 const animeGirl = `
@@ -49,12 +40,13 @@ const animeGirl = `
 _.-'    /     Bb     '-. '-._
 `;
 
-type AppState = 'startup' | 'setup' | 'main';
+type AppPhase = 'startup' | 'depcheck' | 'setup' | 'main';
 
 const App = () => {
-  const { view, setView, isInputFocused } = useStore();
+  const { view, setView, isInputFocused, errorMessage } = useStore();
   const { exit } = useApp();
-  const [appState, setAppState] = useState<AppState>('startup');
+  const [appState, setAppState] = useState<AppPhase>('startup');
+  const [missingDeps, setMissingDeps] = useState<string[]>([]);
 
   useEffect(() => {
     // Initialize API on startup (after setup is complete)
@@ -63,12 +55,27 @@ const App = () => {
     }
   }, [appState]);
 
-  const handleStartupComplete = () => {
-    if (isFirstRun()) {
-      setAppState('setup');
+  // Dependency check
+  useEffect(() => {
+    if (appState !== 'depcheck') return;
+
+    const missing: string[] = [];
+    try { execSync('which mpv', { stdio: 'ignore' }); } catch { missing.push('mpv'); }
+    try { execSync('which yt-dlp', { stdio: 'ignore' }); } catch { missing.push('yt-dlp'); }
+
+    if (missing.length > 0) {
+      setMissingDeps(missing);
     } else {
-      setAppState('main');
+      if (isFirstRun()) {
+        setAppState('setup');
+      } else {
+        setAppState('main');
+      }
     }
+  }, [appState]);
+
+  const handleStartupComplete = () => {
+    setAppState('depcheck');
   };
 
   const handleSetupComplete = () => {
@@ -85,6 +92,8 @@ const App = () => {
 
     // Quit with Ctrl+Q
     if (input === 'q' && key.ctrl) {
+      cacheService.cleanup();
+      player.destroy();
       exit();
     }
 
@@ -103,18 +112,60 @@ const App = () => {
     }
 
     // Playback Controls
-    const { togglePlay, nextTrack, prevTrack, setVolume, volume } = useStore.getState();
+    const { togglePlay, nextTrack, prevTrack, setVolume, volume, view, seek, cycleRepeatMode } = useStore.getState();
 
     if (input === ' ') togglePlay();
-    if (input === 'n') nextTrack();
-    if (input === 'p') prevTrack();
+    // Only bind n/p for track navigation when not in views that use those keys
+    if (view !== 'playlists' && view !== 'search') {
+      if (input === 'n') nextTrack();
+      if (input === 'p') prevTrack();
+    }
     if (input === '+' || input === '=') setVolume(Math.min(100, volume + 5));
     if (input === '-' || input === '_') setVolume(Math.max(0, volume - 5));
+
+    // Seek controls
+    if (input === ',') seek(-5);
+    if (input === '.') seek(5);
+
+    // Repeat mode
+    if (input === 'l') cycleRepeatMode();
   });
 
   // Show startup animation
   if (appState === 'startup') {
     return <StartupAnimation onComplete={handleStartupComplete} duration={2500} />;
+  }
+
+  // Show dependency check / missing deps screen
+  if (appState === 'depcheck' && missingDeps.length > 0) {
+    return (
+      <Box flexDirection="column" padding={2} borderStyle="round" borderColor={theme.error}>
+        <Text bold color={theme.error}>Missing Dependencies</Text>
+        <Box marginTop={1} flexDirection="column">
+          {missingDeps.includes('mpv') && (
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color={theme.warning}>mpv is not installed.</Text>
+              <Text color={theme.text}>  macOS:  brew install mpv</Text>
+              <Text color={theme.text}>  Ubuntu: sudo apt install mpv</Text>
+              <Text color={theme.text}>  Arch:   sudo pacman -S mpv</Text>
+            </Box>
+          )}
+          {missingDeps.includes('yt-dlp') && (
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color={theme.warning}>yt-dlp is not installed.</Text>
+              <Text color={theme.text}>  pip install yt-dlp</Text>
+              <Text color={theme.text}>  or: brew install yt-dlp</Text>
+            </Box>
+          )}
+        </Box>
+        <Box marginTop={1}>
+          <Text color={theme.dim}>Install the missing tools and restart AuraTUI.</Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text color={theme.dim}>Press Ctrl+C to exit.</Text>
+        </Box>
+      </Box>
+    );
   }
 
   // Show setup screen for first run
@@ -147,6 +198,13 @@ const App = () => {
           <Text color={theme.dim}> | Ctrl+Q: Quit</Text>
         </Box>
       </Box>
+
+      {/* Error banner */}
+      {errorMessage && (
+        <Box paddingX={1}>
+          <Text color={theme.error} bold>Error: {errorMessage}</Text>
+        </Box>
+      )}
 
       {/* Main content area with anime girl on the left */}
       <Box flexGrow={1} flexDirection="row">

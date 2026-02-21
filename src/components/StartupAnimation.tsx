@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
 
 // Wizard ASCII art (static)
@@ -53,6 +53,8 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
   const [textIndex, setTextIndex] = useState(0);
   const [dots, setDots] = useState('');
   const [stars, setStars] = useState<Star[]>([]);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   const width = 80;
   const height = 30;
@@ -94,7 +96,7 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
       clearInterval(starInterval);
       clearInterval(textInterval);
       clearInterval(dotsInterval);
-      onComplete();
+      onCompleteRef.current();
     }, duration);
 
     return () => {
@@ -103,19 +105,19 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({
       clearInterval(dotsInterval);
       clearTimeout(timeout);
     };
-  }, [onComplete, duration]);
+  }, [duration]);
 
-  // Render stars background
+  // Render stars background (optimized with Set lookup)
   const renderStars = () => {
+    // Pre-compute star positions into a Set for O(1) lookup
+    const starPositions = new Set(
+      stars.map(star => `${Math.floor(star.x)},${Math.floor(star.y)}`)
+    );
     const lines: string[] = [];
     for (let row = 0; row < height; row++) {
       let line = '';
       for (let col = 0; col < width; col++) {
-        // Check if there's a star at this position
-        const hasStar = stars.some(
-          star => Math.floor(star.x) === col && Math.floor(star.y) === row
-        );
-        line += hasStar ? '*' : ' ';
+        line += starPositions.has(`${col},${row}`) ? '*' : ' ';
       }
       lines.push(line);
     }

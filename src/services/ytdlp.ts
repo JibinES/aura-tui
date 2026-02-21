@@ -13,6 +13,12 @@ export interface YtdlpSearchResult {
 /**
  * Search for songs using yt-dlp
  */
+// Ensure duration is always a valid positive number
+const parseDuration = (value: any): number => {
+  const num = Number(value);
+  return (Number.isFinite(num) && num > 0) ? Math.floor(num) : 0;
+};
+
 export const searchSongs = async (query: string, limit: number = 15): Promise<YtdlpSearchResult[]> => {
   return new Promise((resolve, reject) => {
     const results: YtdlpSearchResult[] = [];
@@ -55,7 +61,7 @@ export const searchSongs = async (query: string, limit: number = 15): Promise<Yt
             id: item.id || item.url,
             title: item.title || 'Unknown Title',
             artist: item.channel || item.uploader || 'Unknown Artist',
-            duration: item.duration || 0,
+            duration: parseDuration(item.duration),
             thumbnail: item.thumbnail || item.thumbnails?.[0]?.url
           });
         } catch (e) {
@@ -153,7 +159,7 @@ export const getVideoInfo = async (videoId: string): Promise<YtdlpSearchResult> 
           title: item.title || 'Unknown Title',
           artist: item.channel || item.uploader || 'Unknown Artist',
           album: item.album,
-          duration: item.duration || 0,
+          duration: parseDuration(item.duration),
           thumbnail: item.thumbnail
         });
       } catch (e) {
@@ -163,6 +169,74 @@ export const getVideoInfo = async (videoId: string): Promise<YtdlpSearchResult> 
 
     proc.on('error', (err) => {
       reject(new Error(`Failed to run yt-dlp: ${err.message}`));
+    });
+  });
+};
+
+/**
+ * Get recommendations based on a video using YouTube Mix (RD playlist)
+ * This uses YouTube's auto-generated radio mix for a song — essentially
+ * YouTube's own recommendation algorithm.
+ */
+export const getRecommendations = async (videoId: string, limit: number = 15): Promise<YtdlpSearchResult[]> => {
+  return new Promise((resolve, reject) => {
+    const results: YtdlpSearchResult[] = [];
+    const mixUrl = `https://www.youtube.com/watch?v=${videoId}&list=RD${videoId}`;
+
+    const proc = spawn('yt-dlp', [
+      mixUrl,
+      '--dump-json',
+      '--flat-playlist',
+      '--no-warnings',
+      '--quiet',
+      '--playlist-end', String(limit + 1) // +1 because the source song is included
+    ]);
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      if (code !== 0 && results.length === 0) {
+        // Don't reject — just return empty array for recommendations
+        // This is non-critical functionality
+        resolve([]);
+        return;
+      }
+
+      const lines = stdout.trim().split('\n').filter(line => line.length > 0);
+
+      for (const line of lines) {
+        try {
+          const item = JSON.parse(line);
+          // Skip the source video itself
+          if (item.id === videoId) continue;
+
+          results.push({
+            id: item.id || item.url,
+            title: item.title || 'Unknown Title',
+            artist: item.channel || item.uploader || 'Unknown Artist',
+            duration: parseDuration(item.duration),
+            thumbnail: item.thumbnail || item.thumbnails?.[0]?.url
+          });
+        } catch (e) {
+          // Skip invalid JSON lines
+        }
+      }
+
+      resolve(results.slice(0, limit));
+    });
+
+    proc.on('error', (err) => {
+      // Non-critical: resolve with empty array instead of rejecting
+      resolve([]);
     });
   });
 };

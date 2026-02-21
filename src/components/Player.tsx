@@ -1,18 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { useStore } from '../store/state';
+import { theme } from '../utils/theme';
 
-// Violet theme colors
-const theme = {
-  primary: '#a855f7',
-  secondary: '#c084fc',
-  accent: '#8b5cf6',
-  highlight: '#7c3aed',
-  muted: '#6b21a8',
-  text: '#e9d5ff',
-  border: '#9333ea',
-  active: '#d8b4fe',
-  dim: '#581c87',
+// Loading spinner animation
+const LoadingSpinner = () => {
+  const [frame, setFrame] = useState(0);
+  const [pulsePos, setPulsePos] = useState(0);
+  const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  const barWidth = 40;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFrame(prev => (prev + 1) % spinnerFrames.length);
+      setPulsePos(prev => (prev + 1) % (barWidth * 2));
+    }, 80);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Animated pulsing loading bar that bounces left and right
+  const effectivePos = pulsePos < barWidth ? pulsePos : (barWidth * 2) - pulsePos - 1;
+  const loadingBar = Array.from({ length: barWidth }, (_, i) => {
+    const dist = Math.abs(i - effectivePos);
+    if (dist === 0) return '█';
+    if (dist === 1) return '▓';
+    if (dist === 2) return '▒';
+    if (dist === 3) return '░';
+    return '·';
+  }).join('');
+
+  return (
+    <Box flexDirection="column">
+      <Box>
+        <Text color={theme.secondary}>{spinnerFrames[frame]} </Text>
+        <Text color={theme.accent}>{loadingBar}</Text>
+      </Box>
+      <Box marginTop={1}>
+        <Text color={theme.secondary}>Loading song... please wait</Text>
+      </Box>
+    </Box>
+  );
 };
 
 // Equalizer component with animation
@@ -22,7 +49,11 @@ const Equalizer = ({ isPlaying }: { isPlaying: boolean }) => {
   const maxHeight = 7;
 
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying) {
+      // Show low flat bars when paused
+      setBars([1, 1, 1, 1, 1, 1, 1, 1]);
+      return;
+    }
 
     const interval = setInterval(() => {
       setBars(prev => prev.map(() => Math.floor(Math.random() * maxHeight) + 1));
@@ -60,7 +91,7 @@ const Equalizer = ({ isPlaying }: { isPlaying: boolean }) => {
 };
 
 const Player = () => {
-  const { currentSong, isPlaying, volume, currentTime, duration } = useStore();
+  const { currentSong, isPlaying, isLoading, volume, currentTime, duration, shuffle, autoplay, queue, isRadioMode, repeatMode } = useStore();
 
   if (!currentSong) {
     return (
@@ -79,16 +110,18 @@ const Player = () => {
 
   const progress = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
   const progressBarWidth = 40;
-  const filledWidth = Math.round((progress / 100) * progressBarWidth);
+  const filledWidth = duration > 0 ? Math.round((progress / 100) * progressBarWidth) : 0;
   const emptyWidth = progressBarWidth - filledWidth;
-  const progressBar = '█'.repeat(filledWidth) + '░'.repeat(emptyWidth);
+  const progressBar = duration > 0
+    ? '█'.repeat(filledWidth) + '░'.repeat(emptyWidth)
+    : '·'.repeat(progressBarWidth);
 
   return (
-    <Box borderStyle="round" borderColor={theme.primary} padding={1} flexDirection="row">
+    <Box borderStyle="round" borderColor={isLoading ? theme.accent : theme.primary} padding={1} flexDirection="row">
       {/* Controls Section */}
       <Box flexDirection="column" flexGrow={1}>
         <Box marginBottom={1}>
-          <Text bold color={theme.secondary}>Now Playing: </Text>
+          <Text bold color={theme.secondary}>{isLoading ? 'Loading: ' : 'Now Playing: '}</Text>
           <Text color={theme.text}>{currentSong.title}</Text>
         </Box>
         <Box marginBottom={1}>
@@ -96,24 +129,36 @@ const Player = () => {
           <Text color={theme.muted}> - {currentSong.album || 'Unknown Album'}</Text>
         </Box>
 
-        <Box>
-          <Text color={theme.text}>{formatTime(currentTime)} </Text>
-          <Text color={theme.primary}>{progressBar}</Text>
-          <Text color={theme.text}> {formatTime(duration)}</Text>
-        </Box>
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : (
+          <>
+            <Box>
+              <Text color={theme.text}>{formatTime(currentTime)} </Text>
+              <Text color={theme.primary}>{progressBar}</Text>
+              <Text color={theme.text}> {duration > 0 ? formatTime(duration) : '--:--'}</Text>
+            </Box>
 
-        <Box marginTop={1} gap={2}>
-          <Text color={isPlaying ? theme.active : theme.muted}>
-            {isPlaying ? '▶ Playing' : '⏸ Paused'}
-          </Text>
-          <Text color={theme.accent}>Vol: {volume}%</Text>
-          <Text color={theme.dim}> | Space: Play/Pause | n: Next | p: Prev | +/-: Volume</Text>
-        </Box>
+            <Box marginTop={1} gap={2}>
+              <Text color={isPlaying ? theme.active : theme.muted}>
+                {isPlaying ? '▶ Playing' : '⏸ Paused'}
+              </Text>
+              <Text color={theme.accent}>Vol: {volume}%</Text>
+              <Text color={shuffle ? theme.active : theme.dim}>⤮ {shuffle ? 'Shuffle' : 'Order'}</Text>
+              <Text color={autoplay ? theme.active : theme.dim}>↻ {autoplay ? 'Auto' : 'Manual'}</Text>
+              <Text color={repeatMode !== 'off' ? theme.active : theme.dim}>
+                {repeatMode === 'one' ? '🔂 One' : '🔁 ' + (repeatMode === 'all' ? 'All' : 'Off')}
+              </Text>
+              <Text color={theme.muted}>Queue: {queue.length}</Text>
+              {isRadioMode && <Text color={theme.secondary}>📻 Radio</Text>}
+            </Box>
+          </>
+        )}
       </Box>
 
       {/* Equalizer Animation */}
       <Box marginLeft={2} justifyContent="center" alignItems="center">
-        <Equalizer isPlaying={isPlaying} />
+        <Equalizer isPlaying={isPlaying && !isLoading} />
       </Box>
     </Box>
   );

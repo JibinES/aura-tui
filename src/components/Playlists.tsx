@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
+import { getScrollWindow } from '../utils/scrollWindow';
 import { useStore, type Song } from '../store/state';
 import {
   getAllPlaylists,
@@ -9,31 +10,22 @@ import {
   renamePlaylist,
   addSongToPlaylist,
   removeSongFromPlaylist,
+  importYouTubePlaylist,
   type Playlist
 } from '../services/playlists';
+import { theme } from '../utils/theme';
 
-// Violet theme colors
-const theme = {
-  primary: '#a855f7',
-  secondary: '#c084fc',
-  accent: '#8b5cf6',
-  highlight: '#7c3aed',
-  muted: '#6b21a8',
-  text: '#e9d5ff',
-  border: '#9333ea',
-  active: '#d8b4fe',
-  dim: '#581c87',
-};
-
-type ViewMode = 'list' | 'create' | 'viewing' | 'addSong';
+type ViewMode = 'list' | 'create' | 'viewing' | 'addSong' | 'import';
 
 const Playlists = () => {
-  const { playSong, addToQueue } = useStore();
+  const { playSong, addToQueue, playPlaylist, shuffle, toggleShuffle, autoplay, toggleAutoplay } = useStore();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [selectedPlaylistIndex, setSelectedPlaylistIndex] = useState(0);
   const [selectedSongIndex, setSelectedSongIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [importUrl, setImportUrl] = useState('');
+  const [importStatus, setImportStatus] = useState<{ loading: boolean; error?: string }>({ loading: false });
   const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
   const [pendingSong, setPendingSong] = useState<Song | null>(null);
 
@@ -44,9 +36,29 @@ const Playlists = () => {
   const loadPlaylists = () => {
     const loaded = getAllPlaylists();
     setPlaylists(loaded);
+    // Refresh currentPlaylist if it exists to avoid stale state
+    if (currentPlaylist) {
+      const updated = loaded.find(p => p.id === currentPlaylist.id);
+      if (updated) {
+        setCurrentPlaylist(updated);
+      } else {
+        // Playlist was deleted externally
+        setCurrentPlaylist(null);
+        setViewMode('list');
+      }
+    }
   };
 
   useInput((input, key) => {
+    // Allow escaping from create/import modes
+    if ((viewMode === 'create' || viewMode === 'import') && key.escape) {
+      setViewMode('list');
+      setNewPlaylistName('');
+      setImportUrl('');
+      setImportStatus({ loading: false });
+      return;
+    }
+
     if (viewMode === 'list') {
       if (key.upArrow) {
         setSelectedPlaylistIndex(prev => Math.max(prev - 1, 0));
@@ -65,6 +77,11 @@ const Playlists = () => {
       if (input === 'n') {
         setViewMode('create');
         setNewPlaylistName('');
+      }
+      if (input === 'i') {
+        setViewMode('import');
+        setImportUrl('');
+        setImportStatus({ loading: false });
       }
       if (input === 'd' && playlists.length > 0) {
         const playlist = playlists[selectedPlaylistIndex];
@@ -86,10 +103,8 @@ const Playlists = () => {
         setSelectedSongIndex(prev => Math.min(prev + 1, currentPlaylist.songs.length - 1));
       }
       if (key.return && currentPlaylist.songs.length > 0) {
-        const song = currentPlaylist.songs[selectedSongIndex];
-        if (song) {
-          playSong(song);
-        }
+        // Play the selected song and queue the rest of the playlist
+        playPlaylist(currentPlaylist.songs, selectedSongIndex, currentPlaylist.id);
       }
       if (input === 'a' && currentPlaylist.songs.length > 0) {
         const song = currentPlaylist.songs[selectedSongIndex];
@@ -108,6 +123,18 @@ const Playlists = () => {
             setSelectedSongIndex(prev => Math.max(0, Math.min(prev, updated.songs.length - 1)));
           }
         }
+      }
+      // Toggle shuffle
+      if (input === 's') {
+        toggleShuffle();
+      }
+      // Toggle autoplay
+      if (input === 'r') {
+        toggleAutoplay();
+      }
+      // Play all from beginning
+      if (input === 'p' && currentPlaylist.songs.length > 0) {
+        playPlaylist(currentPlaylist.songs, 0, currentPlaylist.id);
       }
     } else if (viewMode === 'addSong') {
       if (key.escape) {
@@ -140,6 +167,22 @@ const Playlists = () => {
     }
   };
 
+  const handleImportPlaylist = async (url: string) => {
+    if (!url.trim()) return;
+
+    setImportStatus({ loading: true });
+    const result = await importYouTubePlaylist(url.trim());
+
+    if (result.success) {
+      loadPlaylists();
+      setViewMode('list');
+      setImportUrl('');
+      setImportStatus({ loading: false });
+    } else {
+      setImportStatus({ loading: false, error: result.error });
+    }
+  };
+
   if (viewMode === 'create') {
     return (
       <Box flexDirection="column" padding={1}>
@@ -160,6 +203,36 @@ const Playlists = () => {
     );
   }
 
+  if (viewMode === 'import') {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text bold color={theme.secondary}>Import YouTube Playlist</Text>
+        <Box marginTop={1}>
+          <Text color={theme.accent}>Paste URL: </Text>
+          <TextInput
+            value={importUrl}
+            onChange={setImportUrl}
+            onSubmit={handleImportPlaylist}
+            placeholder="https://youtube.com/playlist?list=..."
+          />
+        </Box>
+        {importStatus.loading && (
+          <Box marginTop={1}>
+            <Text color={theme.active}>Importing playlist...</Text>
+          </Box>
+        )}
+        {importStatus.error && (
+          <Box marginTop={1}>
+            <Text color="#ef4444">Error: {importStatus.error}</Text>
+          </Box>
+        )}
+        <Box marginTop={1}>
+          <Text color={theme.dim}>Press Enter to import, Esc to cancel</Text>
+        </Box>
+      </Box>
+    );
+  }
+
   if (viewMode === 'viewing' && currentPlaylist) {
     return (
       <Box flexDirection="column" padding={1}>
@@ -169,6 +242,16 @@ const Playlists = () => {
           <Text color={theme.muted}> ({currentPlaylist.songs.length} songs)</Text>
         </Box>
 
+        <Box marginBottom={1}>
+          <Text color={shuffle ? theme.active : theme.dim}>
+            [S]huffle: {shuffle ? 'ON' : 'OFF'}
+          </Text>
+          <Text color={theme.muted}> | </Text>
+          <Text color={autoplay ? theme.active : theme.dim}>
+            Auto[P]lay: {autoplay ? 'ON' : 'OFF'}
+          </Text>
+        </Box>
+
         {currentPlaylist.songs.length === 0 ? (
           <Box marginTop={1}>
             <Text color={theme.muted}>No songs in this playlist yet.</Text>
@@ -176,19 +259,31 @@ const Playlists = () => {
           </Box>
         ) : (
           <Box flexDirection="column">
-            {currentPlaylist.songs.map((song, index) => (
-              <Box key={song.id}>
-                <Text color={index === selectedSongIndex ? theme.active : theme.muted}>
-                  {index === selectedSongIndex ? '> ' : '  '}
-                  {index + 1}. {song.title} - {song.artist}
-                </Text>
-              </Box>
-            ))}
+            {(() => {
+              const { start, end } = getScrollWindow(currentPlaylist.songs.length, selectedSongIndex);
+              return (
+                <>
+                  {start > 0 && <Text color={theme.dim}>  ↑ {start} more above</Text>}
+                  {currentPlaylist.songs.slice(start, end).map((song, i) => {
+                    const index = start + i;
+                    return (
+                      <Box key={song.id}>
+                        <Text color={index === selectedSongIndex ? theme.active : theme.muted}>
+                          {index === selectedSongIndex ? '> ' : '  '}
+                          {index + 1}. {song.title} - {song.artist}
+                        </Text>
+                      </Box>
+                    );
+                  })}
+                  {end < currentPlaylist.songs.length && <Text color={theme.dim}>  ↓ {currentPlaylist.songs.length - end} more below</Text>}
+                </>
+              );
+            })()}
           </Box>
         )}
 
         <Box marginTop={1}>
-          <Text color={theme.dim}>Enter: Play | A: Add to Queue | D: Delete | Esc: Back</Text>
+          <Text color={theme.dim}>Enter: Play All | P: Play from Start | A: Queue | S: Shuffle | R: Autoplay | D: Delete | Esc: Back</Text>
         </Box>
       </Box>
     );
@@ -244,7 +339,7 @@ const Playlists = () => {
       )}
 
       <Box marginTop={1}>
-        <Text color={theme.dim}>N: New Playlist | Enter: View | D: Delete | Esc: Back</Text>
+        <Text color={theme.dim}>N: New | I: Import YouTube | Enter: View | D: Delete | Esc: Back</Text>
       </Box>
     </Box>
   );

@@ -1,18 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-
-// Violet theme colors
-const theme = {
-  primary: '#a855f7',
-  secondary: '#c084fc',
-  accent: '#8b5cf6',
-  highlight: '#7c3aed',
-  muted: '#6b21a8',
-  text: '#e9d5ff',
-  border: '#9333ea',
-  active: '#d8b4fe',
-  dim: '#581c87',
-};
+import { theme } from '../utils/theme';
 
 const Help = () => {
   return (
@@ -47,6 +35,9 @@ const Help = () => {
               <Text color={theme.text}><Text color={theme.active}>P</Text> - Previous Track</Text>
               <Text color={theme.text}><Text color={theme.active}>+ / =</Text> - Volume Up (+5%)</Text>
               <Text color={theme.text}><Text color={theme.active}>- / _</Text> - Volume Down (-5%)</Text>
+              <Text color={theme.text}><Text color={theme.active}>,</Text> - Seek Backward 5s</Text>
+              <Text color={theme.text}><Text color={theme.active}>.</Text> - Seek Forward 5s</Text>
+              <Text color={theme.text}><Text color={theme.active}>L</Text> - Cycle Repeat (Off / All / One)</Text>
             </Box>
           </Box>
 
@@ -68,9 +59,13 @@ const Help = () => {
             <Text bold color={theme.primary}>━━━ Playlists View ━━━</Text>
             <Box flexDirection="column" marginLeft={2} marginTop={1}>
               <Text color={theme.text}><Text color={theme.active}>N</Text> - Create New Playlist</Text>
-              <Text color={theme.text}><Text color={theme.active}>Enter</Text> - View / Play Playlist</Text>
-              <Text color={theme.text}><Text color={theme.active}>D</Text> - Delete Playlist / Song</Text>
+              <Text color={theme.text}><Text color={theme.active}>I</Text> - Import YouTube Playlist</Text>
+              <Text color={theme.text}><Text color={theme.active}>Enter</Text> - Play Playlist (auto-queue)</Text>
+              <Text color={theme.text}><Text color={theme.active}>P</Text> - Play All from Start</Text>
+              <Text color={theme.text}><Text color={theme.active}>S</Text> - Toggle Shuffle Mode</Text>
+              <Text color={theme.text}><Text color={theme.active}>R</Text> - Toggle Autoplay (auto-advance to next)</Text>
               <Text color={theme.text}><Text color={theme.active}>A</Text> - Add Song to Queue</Text>
+              <Text color={theme.text}><Text color={theme.active}>D</Text> - Delete Playlist / Song</Text>
               <Text color={theme.text}><Text color={theme.active}>↑ / ↓</Text> - Navigate Items</Text>
               <Text color={theme.text}><Text color={theme.active}>Esc</Text> - Back to Playlist List</Text>
             </Box>
@@ -82,6 +77,9 @@ const Help = () => {
               <Text color={theme.text}><Text color={theme.active}>↑ / ↓</Text> - Navigate Queue</Text>
               <Text color={theme.text}><Text color={theme.active}>Enter</Text> - Play Selected Song</Text>
               <Text color={theme.text}><Text color={theme.active}>Tab</Text> - Switch Queue / History</Text>
+              <Text color={theme.text}><Text color={theme.active}>J</Text> - Move Song Down</Text>
+              <Text color={theme.text}><Text color={theme.active}>K</Text> - Move Song Up</Text>
+              <Text color={theme.text}><Text color={theme.active}>X</Text> - Remove from Queue</Text>
             </Box>
           </Box>
 
@@ -99,8 +97,13 @@ const Help = () => {
               <Text color={theme.accent}>✓ Audio Playback (mpv + yt-dlp)</Text>
               <Text color={theme.accent}>✓ Unlimited Local Playlists</Text>
               <Text color={theme.accent}>✓ Queue Management</Text>
-              <Text color={theme.accent}>✓ Play History Tracking</Text>
+              <Text color={theme.accent}>✓ Autoplay & Shuffle</Text>
+              <Text color={theme.accent}>✓ Auto Radio (YouTube Mix)</Text>
               <Text color={theme.accent}>✓ Ad Detection & Skipping</Text>
+              <Text color={theme.accent}>✓ Seek / Scrub Controls</Text>
+              <Text color={theme.accent}>✓ Repeat Modes (Off / All / One)</Text>
+              <Text color={theme.accent}>✓ Queue Reordering</Text>
+              <Text color={theme.accent}>✓ Persistent Play History</Text>
               <Text color={theme.accent}>✓ Beautiful Violet UI Theme</Text>
             </Box>
           </Box>

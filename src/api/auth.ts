@@ -4,12 +4,12 @@ import { initializeApi } from './ytmusic';
 export const saveCookie = async (cookie: string): Promise<boolean> => {
   try {
     // Basic validation of cookie format
-    if (!cookie || !cookie.includes('COOKIE')) {
-      // Depending on format, sometimes people paste the whole header line
-      // We might want to parse it or just store it if it looks like a cookie string
+    if (!cookie || cookie.trim().length === 0) {
+      console.error('Cookie is empty');
+      return false;
     }
 
-    setCookie(cookie);
+    setCookie(cookie.trim());
 
     // Re-initialize API with new cookie
     await initializeApi();
