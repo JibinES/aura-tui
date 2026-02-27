@@ -7,6 +7,7 @@ import type { Song } from '../store/state';
 const CACHE_DIR = join(tmpdir(), 'auratui-cache');
 const WINDOW_SIZE = 5;
 const MAX_CONCURRENT = 3;
+const DOWNLOAD_TIMEOUT_MS = 120000; // 2 minutes per download
 
 type CacheStatus = 'downloading' | 'ready' | 'error';
 
@@ -126,7 +127,15 @@ class CacheService {
 
         this.activeDownloads.set(song.id, proc);
 
+        // Kill download if it takes too long (no internet, stuck process)
+        const downloadTimer = setTimeout(() => {
+            if (this.activeDownloads.has(song.id)) {
+                try { proc.kill('SIGTERM'); } catch {}
+            }
+        }, DOWNLOAD_TIMEOUT_MS);
+
         proc.on('close', (code) => {
+            clearTimeout(downloadTimer);
             this.activeDownloads.delete(song.id);
 
             // Only update if this song is still in our window
@@ -152,6 +161,7 @@ class CacheService {
         });
 
         proc.on('error', () => {
+            clearTimeout(downloadTimer);
             this.activeDownloads.delete(song.id);
             const entry = this.cache.get(song.id);
             if (entry) {

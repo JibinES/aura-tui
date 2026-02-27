@@ -56,6 +56,7 @@ const Search = () => {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [selectedPlaylistIndex, setSelectedPlaylistIndex] = useState(0);
   const [pendingSong, setPendingSong] = useState<any>(null);
+  const [actionLock, setActionLock] = useState(false);
 
   useEffect(() => {
     setInputFocused(focusMode === 'input');
@@ -87,7 +88,6 @@ const Search = () => {
         setFocusMode('results');
       }
     } catch (error) {
-      console.error('Search failed:', error);
       useStore.getState().setError('Search failed. Please try again.');
     } finally {
       setLoading(false);
@@ -127,8 +127,9 @@ const Search = () => {
 
         if (key.return) {
           const song = searchResults[selectedIndex];
-          if (song) {
-            await playSong(song, true);
+          if (song && !actionLock) {
+            setActionLock(true);
+            try { await playSong(song, true); } finally { setActionLock(false); }
           }
         }
 
@@ -184,7 +185,7 @@ const Search = () => {
           }
         }
       }
-    })().catch(err => console.error('Input handler error:', err));
+    })().catch(() => {});
   });
 
   // Memoize the results rendering to avoid re-rendering on every keystroke

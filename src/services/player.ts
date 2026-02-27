@@ -5,7 +5,9 @@ interface PlayerState {
   volume: number;
   muted: boolean;
   position: number;
+  precisePosition: number; // Float position for lyrics sync
   duration: number;
+  transitioning: boolean; // True while switching songs
 }
 
 class PlayerService {
@@ -15,16 +17,18 @@ class PlayerService {
     volume: 50,
     muted: false,
     position: 0,
-    duration: 0
+    precisePosition: 0,
+    duration: 0,
+    transitioning: false,
   };
   private listeners: ((state: PlayerState) => void)[] = [];
   private songEndListeners: (() => void)[] = [];
 
-  // Internal timer for progress tracking
+  // Internal timer for polling MPV's real position
   private progressTimer: any = null;
   // Flag to distinguish user-initiated stop from natural song end
   private manualStop: boolean = false;
-  // Flag for repeat-one looping (suppresses song-end from timer)
+  // Flag for repeat-one looping
   private looping: boolean = false;
 
   constructor() {
@@ -42,7 +46,7 @@ class PlayerService {
         '   • Linux: sudo apt install mpv\n'
       );
       // Create a dummy mpv so the app doesn't crash on method calls
-      this.mpv = { on: () => { }, load: async () => { }, pause: async () => { }, resume: async () => { }, stop: async () => { }, volume: async () => { }, quit: async () => { }, seek: () => { }, goToPosition: () => { }, loop: () => { }, clearLoop: () => { }, getDuration: async () => 0 };
+      this.mpv = { on: () => { }, load: async () => { }, pause: async () => { }, resume: async () => { }, stop: async () => { }, volume: async () => { }, quit: async () => { }, seek: () => { }, goToPosition: () => { }, loop: () => { }, clearLoop: () => { }, getDuration: async () => 0, getProperty: async () => 0 };
     }
   }
 
@@ -52,23 +56,20 @@ class PlayerService {
       this.manualStop = false;
       this.state.playing = true;
       this.state.position = 0;
+      this.state.precisePosition = 0;
+      this.state.transitioning = false;
       this.startProgressTimer();
       this.notifyListeners();
     });
 
     // When song stops — MPV fires this both for natural end and user stop
+    // This is the SOLE trigger for song-end detection (no timer-based detection)
     this.mpv.on('stopped', () => {
       this.state.playing = false;
       this.stopProgressTimer();
 
-      // Check if this was a natural song end (not a manual stop)
-      // If we have a known duration, check if position is near the end
-      // If duration is unknown (0), and this wasn't a manual stop, treat it as natural end
-      // (the song played and MPV finished it)
-      const nearEnd = this.state.duration > 0 &&
-        (this.state.position >= this.state.duration - 3 || this.state.position >= this.state.duration);
-      const unknownDurationEnd = this.state.duration === 0 && this.state.position > 5;
-      const isNaturalEnd = !this.manualStop && (nearEnd || unknownDurationEnd);
+      // If this wasn't a manual stop, it's a natural song end
+      const isNaturalEnd = !this.manualStop && this.state.position > 5;
 
       this.notifyListeners();
 
@@ -92,32 +93,42 @@ class PlayerService {
     });
   }
 
-  // Start our internal progress timer
+  // Start polling MPV for real playback position (UI updates only, no end detection)
+  // Polls at 200ms for precise lyrics sync; only notifies UI when floored second changes
   private startProgressTimer() {
     this.stopProgressTimer(); // Clear any existing timer
+    let lastFlooredPos = -1;
 
-    this.progressTimer = setInterval(() => {
+    this.progressTimer = setInterval(async () => {
       if (this.state.playing) {
-        this.state.position += 1;
-
-        // If duration is known, check for song end
-        if (this.state.duration > 0 && this.state.position >= this.state.duration) {
-          if (this.looping) {
-            // Repeat-one: reset position for visual loop, MPV handles actual replay
-            this.state.position = 0;
-            this.notifyListeners();
-            return;
+        try {
+          const timePos = await this.mpv.getProperty('time-pos');
+          if (timePos != null && Number.isFinite(timePos)) {
+            this.state.precisePosition = timePos;
+            this.state.position = Math.floor(timePos);
           }
-          this.stopProgressTimer();
-          this.state.playing = false;
-          this.notifyListeners();
-          this.notifySongEnd();
-          return;
+
+          // Also sync duration from MPV if we don't have one yet
+          if (this.state.duration <= 0) {
+            const dur = await this.mpv.getProperty('duration');
+            if (dur != null && Number.isFinite(dur) && dur > 0) {
+              this.state.duration = Math.floor(dur);
+            }
+          }
+        } catch {
+          // MPV may not be ready yet — fall back to incrementing
+          this.state.precisePosition += 0.2;
+          this.state.position = Math.floor(this.state.precisePosition);
         }
 
+        // Always notify so lyrics get the precise position updates
+        const flooredPos = this.state.position;
+        if (flooredPos !== lastFlooredPos) {
+          lastFlooredPos = flooredPos;
+        }
         this.notifyListeners();
       }
-    }, 1000);
+    }, 200);
   }
 
   // Stop the progress timer
@@ -130,35 +141,25 @@ class PlayerService {
 
   public async play(url: string, duration?: number) {
     try {
-      // Prevent stale 'stopped' event from previous song triggering autoplay
+      // Stop the currently playing song immediately
       this.manualStop = true;
+      this.state.transitioning = true;
+      this.stopProgressTimer();
+      try { await this.mpv.stop(); } catch { /* may not be playing */ }
+
       // Reset state — don't set playing=true yet, wait for MPV's 'started' event
       this.state.position = 0;
+      this.state.precisePosition = 0;
       this.state.duration = duration || 0;
       this.state.playing = false;
-      this.stopProgressTimer();
       this.notifyListeners();
 
       await this.mpv.load(url);
-
-      // If we don't have a duration from metadata, try to get it from MPV
-      // MPV resolves the actual stream and knows the real duration
-      if (!duration || duration <= 0) {
-        setTimeout(async () => {
-          try {
-            const mpvDuration = await this.mpv.getDuration();
-            if (mpvDuration && mpvDuration > 0) {
-              this.state.duration = Math.floor(mpvDuration);
-              this.notifyListeners();
-            }
-          } catch {
-            // MPV may not have duration yet, that's ok — stopped event will handle end
-          }
-        }, 2000);
-      }
+      // Duration will be synced from MPV by the progress timer
+      // transitioning will be cleared by the 'started' event
     } catch (error) {
-      console.error('Error playing track:', error);
       this.state.playing = false;
+      this.state.transitioning = false;
       this.stopProgressTimer();
       this.notifyListeners();
     }
@@ -176,8 +177,8 @@ class PlayerService {
       this.state.playing = false;
       this.stopProgressTimer();
       this.notifyListeners();
-    } catch (error) {
-      console.error('Error pausing:', error);
+    } catch {
+      // MPV may not be in a pausable state
     }
   }
 
@@ -187,8 +188,8 @@ class PlayerService {
       this.state.playing = true;
       this.startProgressTimer();
       this.notifyListeners();
-    } catch (error) {
-      console.error('Error resuming:', error);
+    } catch {
+      // MPV may not be in a resumable state
     }
   }
 
@@ -204,14 +205,16 @@ class PlayerService {
     try {
       this.mpv.seek(seconds);
       // Update internal position immediately for responsive UI
-      this.state.position = Math.max(0,
+      const newPos = Math.max(0,
         this.state.duration > 0
-          ? Math.min(this.state.position + seconds, this.state.duration)
-          : this.state.position + seconds
+          ? Math.min(this.state.precisePosition + seconds, this.state.duration)
+          : this.state.precisePosition + seconds
       );
+      this.state.precisePosition = newPos;
+      this.state.position = Math.floor(newPos);
       this.notifyListeners();
-    } catch (error) {
-      console.error('Error seeking:', error);
+    } catch {
+      // Seek may fail if no track is loaded
     }
   }
 
@@ -223,8 +226,8 @@ class PlayerService {
       } else {
         this.mpv.clearLoop();
       }
-    } catch (error) {
-      console.error('Error setting loop:', error);
+    } catch {
+      // Loop setting may fail if MPV isn't ready
     }
   }
 
@@ -234,8 +237,8 @@ class PlayerService {
       await this.mpv.volume(vol);
       this.state.volume = vol;
       this.notifyListeners();
-    } catch (error) {
-      console.error('Error setting volume:', error);
+    } catch {
+      // Volume setting may fail if MPV isn't ready
     }
   }
 
@@ -276,10 +279,12 @@ class PlayerService {
       await this.mpv.stop();
       this.stopProgressTimer();
       this.state.position = 0;
+      this.state.precisePosition = 0;
       this.state.playing = false;
+      this.state.transitioning = false;
       this.notifyListeners();
-    } catch (error) {
-      console.error('Error stopping:', error);
+    } catch {
+      // Stop may fail if nothing is playing
     }
   }
 

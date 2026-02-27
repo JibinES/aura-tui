@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { player } from '../services/player';
 import { adBlocker } from '../services/adblock';
 import { cacheService } from '../services/cache';
-import { getRecommendations } from '../services/ytdlp';
+import { getRecommendations, getStreamUrl } from '../services/ytdlp';
 import { getPlayHistory, savePlayHistory } from '../utils/config';
+import { fetchLyrics, type LyricLine } from '../services/lyrics';
 
 export interface Song {
   id: string;
@@ -33,8 +34,13 @@ export interface AppState {
   isRadioMode: boolean;
   currentPlaylistId: string | null;
 
+  // Lyrics State
+  currentLyrics: LyricLine[] | null;
+  plainLyrics: string | null;
+  lyricsLoading: boolean;
+
   // UI State
-  view: 'home' | 'search' | 'player' | 'queue' | 'help' | 'playlists';
+  view: 'home' | 'search' | 'player' | 'queue' | 'help' | 'playlists' | 'lyrics';
   searchQuery: string;
   searchResults: Song[];
   isInputFocused: boolean;
@@ -58,6 +64,7 @@ export interface AppState {
   moveQueueItem: (fromIndex: number, toIndex: number) => void;
   removeFromQueue: (index: number) => void;
   setError: (msg: string | null) => void;
+  fetchLyricsForSong: (song: Song) => Promise<void>;
   fetchRecommendations: (videoId: string) => Promise<void>;
   playPlaylist: (songs: Song[], startIndex?: number, playlistId?: string) => Promise<void>;
 }
@@ -87,6 +94,9 @@ export const useStore = create<AppState>((set, get) => ({
   repeatMode: 'off',
   isRadioMode: false,
   currentPlaylistId: null,
+  currentLyrics: null,
+  plainLyrics: null,
+  lyricsLoading: false,
   view: 'home',
   searchQuery: '',
   searchResults: [],
@@ -97,7 +107,6 @@ export const useStore = create<AppState>((set, get) => ({
   playSong: async (song: Song, fetchMix: boolean = false) => {
     try {
       if (adBlocker.isAd(song)) {
-        console.log('Skipping ad:', song.title);
         const state = get();
         if (state.queue.length > 0) {
           state.nextTrack();
@@ -117,17 +126,29 @@ export const useStore = create<AppState>((set, get) => ({
         isLoading: !cachedPath,
         currentTime: 0,
         duration: song.duration,
+        currentLyrics: null,
+        plainLyrics: null,
+        lyricsLoading: false,
         // Keep radio mode if we're advancing through radio queue
         isRadioMode: currentState.isRadioMode && currentState.queue.length > 0,
       });
 
-      // Use cached file or YouTube URL
-      const url = cachedPath || `https://www.youtube.com/watch?v=${song.id}`;
+      // Use cached file, or resolve actual audio stream URL via yt-dlp
+      // Falls back to direct YouTube URL if yt-dlp fails (MPV can handle it)
+      let url = cachedPath || '';
+      if (!url) {
+        try {
+          url = await getStreamUrl(song.id);
+        } catch {
+          // yt-dlp failed — fall back to direct YouTube URL for MPV to handle
+          url = `https://www.youtube.com/watch?v=${song.id}`;
+        }
+      }
 
       // Set duration in player service (for internal timer)
       player.setDuration(song.duration);
 
-      // Play — cached files load instantly, URLs go through yt-dlp
+      // Play the resolved stream URL or cached file
       await player.play(url, song.duration);
 
       // Safety timeout: if isLoading is still true after 15s, clear it
@@ -173,7 +194,6 @@ export const useStore = create<AppState>((set, get) => ({
       const state = get();
       cacheService.updateWindow(state.queue);
     } catch (error) {
-      console.error('Failed to play song:', error);
       set({ isPlaying: false, isLoading: false });
       get().setError('Failed to play song. Check your connection.');
     }
@@ -270,6 +290,26 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  fetchLyricsForSong: async (song: Song) => {
+    set({ currentLyrics: null, plainLyrics: null, lyricsLoading: true });
+    try {
+      const result = await fetchLyrics(song.title, song.artist, song.duration, song.id);
+      // Only update if this song is still playing
+      if (get().currentSong?.id === song.id) {
+        set({
+          currentLyrics: result.synced,
+          plainLyrics: result.plain,
+          lyricsLoading: false,
+        });
+      } else {
+        // Song changed during fetch — clear loading state
+        set({ lyricsLoading: false });
+      }
+    } catch {
+      set({ lyricsLoading: false });
+    }
+  },
+
   setView: (view) => set({ view }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSearchResults: (results) => set({ searchResults: results }),
@@ -283,7 +323,6 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const recommendations = await getRecommendations(videoId);
       if (recommendations.length > 0) {
-        const state = get();
         const songs = recommendations.map(r => ({
           id: r.id,
           title: r.title,
@@ -293,7 +332,7 @@ export const useStore = create<AppState>((set, get) => ({
           thumbnail: r.thumbnail,
         }));
 
-        const queuedSongs = state.shuffle ? shuffleArray(songs) : songs;
+        const queuedSongs = get().shuffle ? shuffleArray(songs) : songs;
         set({ queue: queuedSongs, isRadioMode: true });
 
         // Start caching the recommendation queue
@@ -307,11 +346,11 @@ export const useStore = create<AppState>((set, get) => ({
             history: s.currentSong ? [...s.history, s.currentSong] : s.history,
           }));
           savePlayHistory(get().history);
-          await state.playSong(nextSong);
+          // Use get() for fresh reference after set() calls
+          await get().playSong(nextSong);
         }
       }
     } catch (error) {
-      console.error('Failed to fetch recommendations:', error);
       get().setError('Failed to fetch recommendations.');
     }
   },
@@ -364,9 +403,21 @@ export const useStore = create<AppState>((set, get) => ({
 
 // Sync player state with store (UI updates only)
 player.subscribe((state) => {
+  // During song transitions, don't let stale MPV state overwrite the store's
+  // isPlaying/isLoading — the old song may still report playing=true briefly
+  if (state.transitioning) {
+    // Only update position/duration, not playing state
+    useStore.setState({
+      currentTime: state.precisePosition,
+      duration: state.duration,
+      volume: state.volume,
+    });
+    return;
+  }
+
   const updates: any = {
     isPlaying: state.playing,
-    currentTime: state.position,
+    currentTime: state.precisePosition,
     duration: state.duration,
     volume: state.volume,
   };
@@ -383,7 +434,7 @@ player.subscribe((state) => {
 let isHandlingSongEnd = false;
 
 // Auto-advance to next track when song ends (reliable callback, no race condition)
-player.onSongEnd(() => {
+player.onSongEnd(async () => {
   if (isHandlingSongEnd) return;
 
   const currentStoreState = useStore.getState();
@@ -391,22 +442,14 @@ player.onSongEnd(() => {
   // Repeat-one is handled by MPV's loop property — timer resets position, no action needed
   if (currentStoreState.repeatMode === 'one') return;
 
-  if (currentStoreState.autoplay) {
-    isHandlingSongEnd = true;
+  if (!currentStoreState.autoplay) return;
 
-    // Safety timeout: reset flag after 30s no matter what, so autoplay can't get permanently stuck
-    const safetyTimeout = setTimeout(() => {
-      isHandlingSongEnd = false;
-    }, 30000);
+  isHandlingSongEnd = true;
 
-    const cleanup = () => {
-      isHandlingSongEnd = false;
-      clearTimeout(safetyTimeout);
-    };
-
+  try {
     if (currentStoreState.queue.length > 0) {
       // Queue has songs — play next
-      currentStoreState.nextTrack().then(cleanup, cleanup);
+      await currentStoreState.nextTrack();
     } else if (currentStoreState.repeatMode === 'all' && currentStoreState.history.length > 0) {
       // Repeat-all: replay history as a new queue
       const historySongs = [...currentStoreState.history];
@@ -416,15 +459,16 @@ player.onSongEnd(() => {
       const firstSong = historySongs[0];
       if (firstSong) {
         useStore.setState({ queue: historySongs.slice(1), history: [] });
-        currentStoreState.playSong(firstSong).then(cleanup, cleanup);
-      } else {
-        cleanup();
+        await useStore.getState().playSong(firstSong);
       }
     } else if (currentStoreState.currentSong) {
       // Queue empty — fetch recommendations (radio mode)
-      currentStoreState.fetchRecommendations(currentStoreState.currentSong.id).then(cleanup, cleanup);
-    } else {
-      cleanup();
+      await useStore.getState().fetchRecommendations(currentStoreState.currentSong.id);
     }
+  } catch (error) {
+    // Song end handling failed — will retry on next song end
+  } finally {
+    // Always reset — no permanent lock possible
+    isHandlingSongEnd = false;
   }
 });

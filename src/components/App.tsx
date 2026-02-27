@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { useStore } from '../store/state';
-import { initializeApi } from '../api/ytmusic';
-import { isFirstRun, markSetupCompleted, resetCookie } from '../utils/config';
+import { isFirstRun, markSetupCompleted } from '../utils/config';
 import { cacheService } from '../services/cache';
 import { player } from '../services/player';
 import { execSync } from 'child_process';
@@ -12,8 +11,8 @@ import Search from './Search';
 import Queue from './Queue';
 import Help from './Help';
 import Playlists from './Playlists';
+import Lyrics from './Lyrics';
 import StartupAnimation from './StartupAnimation';
-import Setup from './Setup';
 import { theme } from '../utils/theme';
 
 // Anime girl ASCII art - always visible in the TUI
@@ -40,20 +39,13 @@ const animeGirl = `
 _.-'    /     Bb     '-. '-._
 `;
 
-type AppPhase = 'startup' | 'depcheck' | 'setup' | 'main';
+type AppPhase = 'startup' | 'depcheck' | 'main';
 
 const App = () => {
   const { view, setView, isInputFocused, errorMessage } = useStore();
   const { exit } = useApp();
   const [appState, setAppState] = useState<AppPhase>('startup');
   const [missingDeps, setMissingDeps] = useState<string[]>([]);
-
-  useEffect(() => {
-    // Initialize API on startup (after setup is complete)
-    if (appState === 'main') {
-      initializeApi().catch(console.error);
-    }
-  }, [appState]);
 
   // Dependency check
   useEffect(() => {
@@ -62,25 +54,18 @@ const App = () => {
     const missing: string[] = [];
     try { execSync('which mpv', { stdio: 'ignore' }); } catch { missing.push('mpv'); }
     try { execSync('which yt-dlp', { stdio: 'ignore' }); } catch { missing.push('yt-dlp'); }
+    try { execSync('which curl', { stdio: 'ignore' }); } catch { missing.push('curl'); }
 
     if (missing.length > 0) {
       setMissingDeps(missing);
     } else {
-      if (isFirstRun()) {
-        setAppState('setup');
-      } else {
-        setAppState('main');
-      }
+      markSetupCompleted();
+      setAppState('main');
     }
   }, [appState]);
 
   const handleStartupComplete = () => {
     setAppState('depcheck');
-  };
-
-  const handleSetupComplete = () => {
-    markSetupCompleted();
-    setAppState('main');
   };
 
   useInput((input, key) => {
@@ -104,19 +89,14 @@ const App = () => {
     if (input === '4') setView('playlists');
     if (input === '?') setView('help');
     if (input === '/') setView('search');
-
-    // Reset cookie - press Ctrl+R to reset and go back to setup
-    if (input === 'r' && key.ctrl) {
-      resetCookie();
-      setAppState('setup');
-    }
+    if (input === 'y') setView(view === 'lyrics' ? 'player' : 'lyrics');
 
     // Playback Controls
-    const { togglePlay, nextTrack, prevTrack, setVolume, volume, view, seek, cycleRepeatMode } = useStore.getState();
+    const { togglePlay, nextTrack, prevTrack, setVolume, volume, view: currentView, seek, cycleRepeatMode } = useStore.getState();
 
     if (input === ' ') togglePlay();
     // Only bind n/p for track navigation when not in views that use those keys
-    if (view !== 'playlists' && view !== 'search') {
+    if (currentView !== 'playlists' && currentView !== 'search') {
       if (input === 'n') nextTrack();
       if (input === 'p') prevTrack();
     }
@@ -157,6 +137,14 @@ const App = () => {
               <Text color={theme.text}>  or: brew install yt-dlp</Text>
             </Box>
           )}
+          {missingDeps.includes('curl') && (
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color={theme.warning}>curl is not installed.</Text>
+              <Text color={theme.text}>  macOS:  (pre-installed)</Text>
+              <Text color={theme.text}>  Ubuntu: sudo apt install curl</Text>
+              <Text color={theme.text}>  Arch:   sudo pacman -S curl</Text>
+            </Box>
+          )}
         </Box>
         <Box marginTop={1}>
           <Text color={theme.dim}>Install the missing tools and restart AuraTUI.</Text>
@@ -168,17 +156,13 @@ const App = () => {
     );
   }
 
-  // Show setup screen for first run
-  if (appState === 'setup') {
-    return <Setup onComplete={handleSetupComplete} />;
-  }
-
   const renderView = () => {
     switch (view) {
       case 'home': return <Home />;
       case 'search': return <Search />;
       case 'queue': return <Queue />;
       case 'playlists': return <Playlists />;
+      case 'lyrics': return <Lyrics />;
       case 'help': return <Help />;
       default: return <Home />;
     }
@@ -194,6 +178,7 @@ const App = () => {
           <Text color={view === 'search' ? theme.active : theme.muted}>[2] Search </Text>
           <Text color={view === 'queue' ? theme.active : theme.muted}>[3] Queue </Text>
           <Text color={view === 'playlists' ? theme.active : theme.muted}>[4] Playlists </Text>
+          <Text color={view === 'lyrics' ? theme.active : theme.muted}>[Y] Lyrics </Text>
           <Text color={view === 'help' ? theme.active : theme.muted}>[?] Help</Text>
           <Text color={theme.dim}> | Ctrl+Q: Quit</Text>
         </Box>

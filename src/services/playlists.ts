@@ -12,7 +12,7 @@ export interface Playlist {
 }
 
 const playlistsConfig = new Conf<{ playlists: Playlist[] }>({
-  projectName: 'ytmusic-tui',
+  projectName: 'aura-tui',
   configName: 'playlists',
   defaults: {
     playlists: []

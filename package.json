@@ -1,13 +1,41 @@
 {
   "name": "aura-tui",
-  "module": "index.ts",
+  "version": "1.0.0",
+  "description": "A terminal-based YouTube Music player with search, playlists, lyrics, and queue management",
   "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "aura": "bin/aura.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
   "scripts": {
     "dev": "bun run src/index.tsx",
     "build": "bun build ./src/index.tsx --outdir ./dist --target node",
-    "start": "bun run src/index.tsx"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
   },
-  "private": true,
+  "keywords": [
+    "youtube-music",
+    "tui",
+    "terminal",
+    "music-player",
+    "cli",
+    "mpv",
+    "lyrics",
+    "playlist"
+  ],
+  "author": "jibines",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CipherSaber/AuraTUI"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^19.2.13",
@@ -17,16 +45,12 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "chalk": "^5.6.2",
-    "cli-spinners": "^3.4.0",
     "conf": "^15.1.0",
     "ink": "^6.7.0",
     "ink-text-input": "^6.0.0",
     "node-mpv": "^1.5.0",
     "react": "^19.2.4",
-    "terminal-image": "^4.2.0",
     "youtube-sr": "^4.3.12",
-    "ytmusic-api": "^5.3.0",
     "zustand": "^5.0.11"
   }
 }

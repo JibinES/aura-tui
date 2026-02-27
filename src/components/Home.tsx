@@ -21,29 +21,43 @@ interface HomeSection {
 const Home = () => {
   const [sections, setSections] = useState<HomeSection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState(0);
   const [selectedItem, setSelectedItem] = useState(0);
   const [activeLayer, setActiveLayer] = useState<'sections' | 'items'>('sections');
+  const [actionLock, setActionLock] = useState(false);
 
   const { playSong } = useStore();
 
-  useEffect(() => {
-    const fetchHome = async () => {
-      try {
-        const api = getApi();
-        const results = await api.getHomeSections();
-        setSections(results);
-      } catch (error) {
-        console.error('Failed to fetch home:', error);
-        useStore.getState().setError('Failed to load home feed. Check internet or cookie.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHome();
-  }, []);
+  const fetchHome = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const api = getApi();
+      // Race the fetch against a 20s timeout so UI never hangs forever
+      const results = await Promise.race([
+        api.getHomeSections(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 20000)
+        ),
+      ]);
+      setSections(results);
+    } catch {
+      setError('Could not connect to the internet. Press R to retry.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchHome(); }, []);
 
   useInput((input, key) => {
+    // Allow retry even while showing error
+    if (error && (input === 'r' || input === 'R') && !loading) {
+      fetchHome();
+      return;
+    }
+
     (async () => {
       if (loading || sections.length === 0) return;
 
@@ -75,9 +89,9 @@ const Home = () => {
           setSelectedItem(prev => Math.max(prev - 1, 0));
         }
 
-        if (key.return) {
+        if (key.return && !actionLock) {
           const item = items[selectedItem];
-          if (item.videoId) {
+          if (item?.videoId) {
             const song: Song = {
               id: item.videoId,
               title: item.name,
@@ -86,19 +100,42 @@ const Home = () => {
               duration: item.duration ? Math.round(item.duration / 1000) : 0,
               thumbnail: item.thumbnails?.[0]?.url
             };
-            await playSong(song, true);
+            setActionLock(true);
+            try { await playSong(song, true); } finally { setActionLock(false); }
           }
         }
       }
-    })().catch(err => console.error('Input handler error:', err));
+    })().catch(() => {});
   });
 
   if (loading) {
-    return <Text color={theme.secondary}>Loading Home Feed...</Text>;
+    return (
+      <Box padding={1}>
+        <Text color={theme.secondary}>Loading Home Feed...</Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text color={theme.error}>{error}</Text>
+        <Box marginTop={1}>
+          <Text color={theme.dim}>Navigation still works — try Search [2] or Playlists [4]</Text>
+        </Box>
+      </Box>
+    );
   }
 
   if (sections.length === 0) {
-    return <Text color="#ef4444">No home sections found. Check internet or cookie.</Text>;
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text color={theme.muted}>No home sections found. Press R to retry.</Text>
+        <Box marginTop={1}>
+          <Text color={theme.dim}>Navigation still works — try Search [2] or Playlists [4]</Text>
+        </Box>
+      </Box>
+    );
   }
 
   const currentSection = sections[selectedSection];

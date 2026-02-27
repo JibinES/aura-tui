@@ -87,8 +87,9 @@ const Playlists = () => {
         const playlist = playlists[selectedPlaylistIndex];
         if (playlist) {
           deletePlaylist(playlist.id);
-          loadPlaylists();
-          setSelectedPlaylistIndex(prev => Math.max(0, Math.min(prev, playlists.length - 2)));
+          const updated = getAllPlaylists();
+          setPlaylists(updated);
+          setSelectedPlaylistIndex(prev => Math.max(0, Math.min(prev, updated.length - 1)));
         }
       }
     } else if (viewMode === 'viewing' && currentPlaylist) {
@@ -116,8 +117,10 @@ const Playlists = () => {
         const song = currentPlaylist.songs[selectedSongIndex];
         if (song) {
           removeSongFromPlaylist(currentPlaylist.id, song.id);
-          loadPlaylists();
-          const updated = getAllPlaylists().find(p => p.id === currentPlaylist.id);
+          // Read fresh data directly from disk after mutation
+          const freshPlaylists = getAllPlaylists();
+          setPlaylists(freshPlaylists);
+          const updated = freshPlaylists.find(p => p.id === currentPlaylist.id);
           if (updated) {
             setCurrentPlaylist(updated);
             setSelectedSongIndex(prev => Math.max(0, Math.min(prev, updated.songs.length - 1)));
@@ -162,7 +165,9 @@ const Playlists = () => {
   const handleCreatePlaylist = (name: string) => {
     if (name.trim()) {
       createPlaylist(name.trim());
-      loadPlaylists();
+      // Read fresh data directly so state is updated before switching view
+      const freshPlaylists = getAllPlaylists();
+      setPlaylists(freshPlaylists);
       setViewMode('list');
     }
   };

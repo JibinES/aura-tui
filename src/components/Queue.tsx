@@ -8,6 +8,7 @@ const Queue = () => {
   const { queue, currentSong, playSong, history, setView, moveQueueItem, removeFromQueue } = useStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
+  const [actionLock, setActionLock] = useState(false);
 
   useInput((input, key) => {
     if (key.escape || input === 'q') {
@@ -30,15 +31,17 @@ const Queue = () => {
       setSelectedIndex(prev => Math.max(prev - 1, 0));
     }
 
-    if (key.return && list.length > 0) {
+    if (key.return && list.length > 0 && !actionLock) {
       const song = list[selectedIndex];
       if (song && activeTab === 'queue') {
         // Remove the song from the queue before playing to avoid duplicates
         const newQueue = [...queue.slice(0, selectedIndex), ...queue.slice(selectedIndex + 1)];
         useStore.setState({ queue: newQueue });
-        playSong(song);
+        setActionLock(true);
+        playSong(song).finally(() => setActionLock(false));
       } else if (song) {
-        playSong(song);
+        setActionLock(true);
+        playSong(song).finally(() => setActionLock(false));
       }
     }
 

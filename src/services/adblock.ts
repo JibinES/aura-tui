@@ -1,15 +1,5 @@
-
 // Ad blocking service
-// Strategy:
-// 1. Filter out known ad-related items from API responses
-// 2. Monitor playback time and skip known ad segments (SponsorBlock style if possible, or just skip non-music tracks)
-// 3. Detect if a track is an ad based on metadata (short duration, specific keywords)
-
-export interface AdBlockConfig {
-  enabled: boolean;
-  skipSegments: boolean;
-  filterResponses: boolean;
-}
+// Filters out ads based on title keywords and short duration detection
 
 class AdBlockService {
   private enabled: boolean = true;

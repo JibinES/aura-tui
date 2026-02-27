@@ -1,30 +1,6 @@
 import YouTube from 'youtube-sr';
-import { getCookie, getPlayHistory } from '../utils/config';
+import { getPlayHistory } from '../utils/config';
 import { getRecommendations } from '../services/ytdlp';
-
-// Note: ytmusic-api is currently being blocked by YouTube with 400 errors
-// We're using youtube-sr as a more reliable alternative
-
-let isInitialized = false;
-
-export const initializeApi = async (): Promise<void> => {
-  if (isInitialized) return;
-
-  const cookie = getCookie();
-
-  // youtube-sr doesn't need explicit initialization
-  // It works out of the box without authentication
-  // Cookie is mainly for personalized features which we'll handle separately
-
-  isInitialized = true;
-
-  console.log('YouTube Search API initialized (using youtube-sr)');
-  if (cookie && cookie.length > 100) {
-    console.log('Cookie detected (length:', cookie.length, ') - personalized features available');
-  } else {
-    console.log('No cookie - using public search only');
-  }
-};
 
 export interface SearchResult {
   id: string;
@@ -47,8 +23,7 @@ export const searchVideos = async (query: string, limit: number = 20): Promise<S
       thumbnail: video.thumbnail?.url,
       type: 'video' as const
     }));
-  } catch (error) {
-    console.error('Search failed:', error);
+  } catch {
     return [];
   }
 };
@@ -146,7 +121,6 @@ export const getHomeSections = async (): Promise<{ title: string; contents: any[
 };
 
 export const getApi = () => {
-  // For compatibility with existing code
   return {
     search: async (query: string, type: string = 'video') => {
       const results = await searchVideos(query, 20);
@@ -171,9 +145,4 @@ export const getApi = () => {
     },
     getHomeSections: getHomeSections,
   };
-};
-
-export const isAuthenticated = (): boolean => {
-  const cookie = getCookie();
-  return !!(cookie && cookie.length > 100);
 };

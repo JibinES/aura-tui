@@ -2,117 +2,66 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import { theme } from '../utils/theme';
 
+const K = ({ k, desc }: { k: string; desc: string }) => (
+  <Text color={theme.text}><Text color={theme.active}>{k.padEnd(8)}</Text>{desc}</Text>
+);
+
 const Help = () => {
   return (
-    <Box flexDirection="column" padding={1} borderStyle="round" borderColor={theme.border}>
-      <Box flexDirection="column" alignItems="center" marginBottom={1}>
-        <Text bold underline color={theme.secondary}>♪ AuraTUI - Keyboard Shortcuts ♪</Text>
-        <Text color={theme.dim} dimColor>YouTube Music in your terminal</Text>
+    <Box flexDirection="column" padding={1}>
+      <Box alignItems="center" marginBottom={1}>
+        <Text bold color={theme.secondary}>♪ AuraTUI  </Text>
+        <Text color={theme.dim}>Keyboard Shortcuts & Controls</Text>
       </Box>
 
-      <Box flexDirection="row" gap={2}>
-        {/* Left Column */}
-        <Box flexDirection="column" flexGrow={1}>
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={theme.primary}>━━━ Navigation ━━━</Text>
-            <Box flexDirection="column" marginLeft={2} marginTop={1}>
-              <Text color={theme.text}><Text color={theme.active}>1</Text> - Home View</Text>
-              <Text color={theme.text}><Text color={theme.active}>2</Text> - Search View</Text>
-              <Text color={theme.text}><Text color={theme.active}>3</Text> - Queue View</Text>
-              <Text color={theme.text}><Text color={theme.active}>4</Text> - Playlists View</Text>
-              <Text color={theme.text}><Text color={theme.active}>?</Text> - Help View (this screen)</Text>
-              <Text color={theme.text}><Text color={theme.active}>/</Text> - Quick Search</Text>
-              <Text color={theme.text}><Text color={theme.active}>Esc</Text> - Go Back / Exit Input</Text>
-              <Text color={theme.text}><Text color={theme.active}>Ctrl+Q</Text> - Quit Application</Text>
-            </Box>
-          </Box>
+      <Box flexDirection="row" gap={4}>
+        {/* Column 1 */}
+        <Box flexDirection="column">
+          <Text bold color={theme.primary}>Navigation</Text>
+          <K k="1" desc="Home" />
+          <K k="2 /" desc="Search" />
+          <K k="3" desc="Queue" />
+          <K k="4" desc="Playlists" />
+          <K k="Y" desc="Lyrics" />
+          <K k="?" desc="Help" />
+          <K k="Esc" desc="Go Back" />
+          <K k="Ctrl+Q" desc="Quit" />
 
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={theme.primary}>━━━ Playback Controls ━━━</Text>
-            <Box flexDirection="column" marginLeft={2} marginTop={1}>
-              <Text color={theme.text}><Text color={theme.active}>Space</Text> - Play / Pause</Text>
-              <Text color={theme.text}><Text color={theme.active}>N</Text> - Next Track</Text>
-              <Text color={theme.text}><Text color={theme.active}>P</Text> - Previous Track</Text>
-              <Text color={theme.text}><Text color={theme.active}>+ / =</Text> - Volume Up (+5%)</Text>
-              <Text color={theme.text}><Text color={theme.active}>- / _</Text> - Volume Down (-5%)</Text>
-              <Text color={theme.text}><Text color={theme.active}>,</Text> - Seek Backward 5s</Text>
-              <Text color={theme.text}><Text color={theme.active}>.</Text> - Seek Forward 5s</Text>
-              <Text color={theme.text}><Text color={theme.active}>L</Text> - Cycle Repeat (Off / All / One)</Text>
-            </Box>
-          </Box>
-
-          <Box flexDirection="column">
-            <Text bold color={theme.primary}>━━━ Search View ━━━</Text>
-            <Box flexDirection="column" marginLeft={2} marginTop={1}>
-              <Text color={theme.text}><Text color={theme.active}>Enter</Text> - Submit Search / Play Song</Text>
-              <Text color={theme.text}><Text color={theme.active}>Tab</Text> - Exit Search Input</Text>
-              <Text color={theme.text}><Text color={theme.active}>↑ / ↓</Text> - Navigate Results</Text>
-              <Text color={theme.text}><Text color={theme.active}>A</Text> - Add to Queue</Text>
-              <Text color={theme.text}><Text color={theme.active}>P</Text> - Add to Playlist</Text>
-            </Box>
-          </Box>
+          <Box marginTop={1}><Text bold color={theme.primary}>Playback</Text></Box>
+          <K k="Space" desc="Play / Pause" />
+          <K k="N" desc="Next Track" />
+          <K k="P" desc="Previous Track" />
+          <K k="+ / -" desc="Volume" />
+          <K k=", / ." desc="Seek ±5s" />
+          <K k="L" desc="Repeat: Off/All/One" />
         </Box>
 
-        {/* Right Column */}
-        <Box flexDirection="column" flexGrow={1}>
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={theme.primary}>━━━ Playlists View ━━━</Text>
-            <Box flexDirection="column" marginLeft={2} marginTop={1}>
-              <Text color={theme.text}><Text color={theme.active}>N</Text> - Create New Playlist</Text>
-              <Text color={theme.text}><Text color={theme.active}>I</Text> - Import YouTube Playlist</Text>
-              <Text color={theme.text}><Text color={theme.active}>Enter</Text> - Play Playlist (auto-queue)</Text>
-              <Text color={theme.text}><Text color={theme.active}>P</Text> - Play All from Start</Text>
-              <Text color={theme.text}><Text color={theme.active}>S</Text> - Toggle Shuffle Mode</Text>
-              <Text color={theme.text}><Text color={theme.active}>R</Text> - Toggle Autoplay (auto-advance to next)</Text>
-              <Text color={theme.text}><Text color={theme.active}>A</Text> - Add Song to Queue</Text>
-              <Text color={theme.text}><Text color={theme.active}>D</Text> - Delete Playlist / Song</Text>
-              <Text color={theme.text}><Text color={theme.active}>↑ / ↓</Text> - Navigate Items</Text>
-              <Text color={theme.text}><Text color={theme.active}>Esc</Text> - Back to Playlist List</Text>
-            </Box>
-          </Box>
+        {/* Column 2 */}
+        <Box flexDirection="column">
+          <Text bold color={theme.primary}>Search</Text>
+          <K k="Enter" desc="Search / Play" />
+          <K k="Tab" desc="Exit Input" />
+          <K k="A" desc="Add to Queue" />
+          <K k="P" desc="Add to Playlist" />
 
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={theme.primary}>━━━ Queue View ━━━</Text>
-            <Box flexDirection="column" marginLeft={2} marginTop={1}>
-              <Text color={theme.text}><Text color={theme.active}>↑ / ↓</Text> - Navigate Queue</Text>
-              <Text color={theme.text}><Text color={theme.active}>Enter</Text> - Play Selected Song</Text>
-              <Text color={theme.text}><Text color={theme.active}>Tab</Text> - Switch Queue / History</Text>
-              <Text color={theme.text}><Text color={theme.active}>J</Text> - Move Song Down</Text>
-              <Text color={theme.text}><Text color={theme.active}>K</Text> - Move Song Up</Text>
-              <Text color={theme.text}><Text color={theme.active}>X</Text> - Remove from Queue</Text>
-            </Box>
-          </Box>
+          <Box marginTop={1}><Text bold color={theme.primary}>Queue</Text></Box>
+          <K k="Enter" desc="Play Song" />
+          <K k="Tab / H" desc="Queue / History" />
+          <K k="K / J" desc="Move Up / Down" />
+          <K k="X" desc="Remove" />
 
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={theme.primary}>━━━ Advanced ━━━</Text>
-            <Box flexDirection="column" marginLeft={2} marginTop={1}>
-              <Text color={theme.text}><Text color={theme.active}>Ctrl+R</Text> - Reset Cookie (Re-setup)</Text>
-            </Box>
-          </Box>
-
-          <Box flexDirection="column">
-            <Text bold color={theme.primary}>━━━ Features ━━━</Text>
-            <Box flexDirection="column" marginLeft={2} marginTop={1}>
-              <Text color={theme.accent}>✓ YouTube Music Search</Text>
-              <Text color={theme.accent}>✓ Audio Playback (mpv + yt-dlp)</Text>
-              <Text color={theme.accent}>✓ Unlimited Local Playlists</Text>
-              <Text color={theme.accent}>✓ Queue Management</Text>
-              <Text color={theme.accent}>✓ Autoplay & Shuffle</Text>
-              <Text color={theme.accent}>✓ Auto Radio (YouTube Mix)</Text>
-              <Text color={theme.accent}>✓ Ad Detection & Skipping</Text>
-              <Text color={theme.accent}>✓ Seek / Scrub Controls</Text>
-              <Text color={theme.accent}>✓ Repeat Modes (Off / All / One)</Text>
-              <Text color={theme.accent}>✓ Queue Reordering</Text>
-              <Text color={theme.accent}>✓ Persistent Play History</Text>
-              <Text color={theme.accent}>✓ Beautiful Violet UI Theme</Text>
-            </Box>
-          </Box>
+          <Box marginTop={1}><Text bold color={theme.primary}>Playlists</Text></Box>
+          <K k="N" desc="New Playlist" />
+          <K k="I" desc="Import YouTube" />
+          <K k="P" desc="Play All" />
+          <K k="S" desc="Shuffle" />
+          <K k="R" desc="Autoplay" />
+          <K k="D" desc="Delete" />
         </Box>
       </Box>
 
-      <Box marginTop={1} borderStyle="single" borderColor={theme.dim} paddingX={1}>
-        <Text color={theme.secondary}>💡 Tip: </Text>
-        <Text color={theme.text}>Press any navigation key (1-4) to exit help | Built with ♪ for terminal music lovers</Text>
+      <Box marginTop={1} justifyContent="center">
+        <Text color={theme.accent}>Made with ❤️ by Jacob A and Jibin ES</Text>
       </Box>
     </Box>
   );

@@ -35,3 +35,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Configuration files with sensitive data
 config.json
+
+# Markdown files
+*.md
+
+# Lock files
+bun.lock
+bun.lockb
