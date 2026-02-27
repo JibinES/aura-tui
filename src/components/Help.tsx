@@ -6,6 +6,11 @@ const K = ({ k, desc }: { k: string; desc: string }) => (
   <Text color={theme.text}><Text color={theme.active}>{k.padEnd(8)}</Text>{desc}</Text>
 );
 
+// OSC 8 hyperlink — makes text clickable in supported terminals
+const Link = ({ url, children, color }: { url: string; children: string; color?: string }) => (
+  <Text color={color}>{`\x1b]8;;${url}\x07${children}\x1b]8;;\x07`}</Text>
+);
+
 const Help = () => {
   return (
     <Box flexDirection="column" padding={1}>
@@ -60,8 +65,15 @@ const Help = () => {
         </Box>
       </Box>
 
-      <Box marginTop={1} justifyContent="center">
-        <Text color={theme.accent}>Made with ❤️ by Jacob A and Jibin ES</Text>
+      <Box marginTop={1} flexDirection="column" alignItems="center">
+        <Text color={theme.accent}>Made with ❤️ by Jacob Ashirwad and Jibin ES</Text>
+        <Link url="https://github.com/JibinES/aura-tui" color={theme.dim}>github.com/JibinES/aura-tui</Link>
+        <Box>
+          <Text color={theme.dim}>Jacob: </Text>
+          <Link url="https://github.com/irl-jacob" color={theme.dim}>github.com/irl-jacob</Link>
+          <Text color={theme.dim}>  •  Jibin: </Text>
+          <Link url="https://github.com/JibinES" color={theme.dim}>github.com/JibinES</Link>
+        </Box>
       </Box>
     </Box>
   );
