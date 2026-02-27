@@ -36,8 +36,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Configuration files with sensitive data
 config.json
 
-# Markdown files
+# Markdown files (except README)
 *.md
+!README.md
 
 # Lock files
 bun.lock
