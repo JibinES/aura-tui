@@ -1,5 +1,7 @@
 # AuraTUI
 
+![AuraTUI Demo](https://raw.githubusercontent.com/JibinES/aura-tui/main/screenshots/aura.gif)
+
 A terminal-based YouTube Music player. Search, stream, queue, and enjoy music — right from your terminal.
 
 ## Features
